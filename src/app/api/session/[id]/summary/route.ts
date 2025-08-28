@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectDB } from '@/lib/db';
-import SessionModel from '@/models/session';
-import MessageModel from '@/models/message';
+import { Session as SessionModel } from '@/models/session';
+import { Message as MessageModel } from '@/models/message';
 import { geminiService } from '@/lib/gemini';
 
 export async function POST(
@@ -31,9 +31,7 @@ export async function POST(
 
     const prompt = `Create a concise, empathetic 5-7 sentence summary of this mental wellness conversation in the user's language. Avoid PII, avoid diagnoses. Offer 2-3 actionable next steps.\n\nTranscript:\n${transcript}`;
 
-    const ai = await geminiService.generateResponse([
-      { role: 'user', content: prompt }
-    ], session.language as any);
+    const ai = await geminiService.generateResponse(prompt, session.language as any);
 
     const summaryText = ai?.trim?.() || ai || 'Summary unavailable.';
 
