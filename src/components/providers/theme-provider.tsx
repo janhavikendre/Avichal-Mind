@@ -28,12 +28,18 @@ export function ThemeProvider({
   storageKey = "avichal-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage?.getItem(storageKey) as Theme) || defaultTheme
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return defaultTheme;
+    try {
+      return ((window.localStorage.getItem(storageKey) as Theme) || defaultTheme);
+    } catch {
+      return defaultTheme;
+    }
+  });
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
 
     root.classList.remove("light", "dark");
 
@@ -53,7 +59,11 @@ export function ThemeProvider({
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage?.setItem(storageKey, theme);
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(storageKey, theme);
+        }
+      } catch {}
       setTheme(theme);
     },
   };
