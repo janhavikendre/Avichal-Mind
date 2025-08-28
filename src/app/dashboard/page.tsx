@@ -110,7 +110,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-6">
             <Link href="/session/new">
-              <Button className="bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 px-8 py-4 text-lg font-bold rounded-2xl">
+              <Button className="bg-blue-600 hover:bg-blue-700 px-8 py-4 text-lg font-bold rounded-2xl">
                 Start New Session
               </Button>
             </Link>
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <AnimatedCard>
-            <Card className="hover:shadow-md transition-shadow bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Sessions</CardTitle>
               </CardHeader>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           </AnimatedCard>
           
           <AnimatedCard>
-            <Card className="hover:shadow-md transition-shadow bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">This Month</CardTitle>
               </CardHeader>
@@ -148,7 +148,7 @@ export default function DashboardPage() {
           </AnimatedCard>
           
           <AnimatedCard>
-            <Card className="hover:shadow-md transition-shadow bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sm:col-span-2 lg:col-span-1">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sm:col-span-2 lg:col-span-1">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Messages</CardTitle>
               </CardHeader>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Recent Sessions</h2>
             <Link href="/sessions">
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto">View All</Button>
+              <Button className="bg-gray-600 hover:bg-gray-700 text-white w-full sm:w-auto">View All</Button>
             </Link>
           </div>
 
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                   <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No sessions yet</h3>
                   <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm sm:text-base">Start your first wellness session to begin your journey.</p>
                   <Link href="/session/new">
-                    <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto">Start Your First Session</Button>
+                    <Button className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto">Start Your First Session</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -196,7 +196,7 @@ export default function DashboardPage() {
             <div className="grid gap-4">
               {sessions.slice(0, 5).map((session) => (
                 <AnimatedCard key={session._id}>
-                  <Card className="hover:shadow-md transition-shadow bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+                  <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex-1">
@@ -228,11 +228,11 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                           <Link href={`/session/${session._id}`}>
-                            <Button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-xs sm:text-sm w-full sm:w-auto">View</Button>
+                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 text-xs sm:text-sm w-full sm:w-auto">View</Button>
                           </Link>
                           {!session.completedAt && (
                             <Link href={`/session/${session._id}/continue`}>
-                              <Button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-xs sm:text-sm w-full sm:w-auto">Continue</Button>
+                              <Button className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 text-xs sm:text-sm w-full sm:w-auto">Continue</Button>
                             </Link>
                           )}
                         </div>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
 
                 {/* Quick Actions */}
         <AnimatedCard>
-          <Card className="hover:shadow-md transition-shadow bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-white">Quick Actions</CardTitle>
               <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Get started with your wellness journey</CardDescription>
@@ -255,12 +255,12 @@ export default function DashboardPage() {
             <CardContent>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                  <Link href="/session/new?mode=text">
-                   <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full h-10 sm:h-12 text-sm sm:text-base px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105">
+                   <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full h-10 sm:h-12 text-sm sm:text-base px-4 py-2 rounded-lg">
                      Start Text Session
                    </Button>
                  </Link>
                  <Link href="/session/new?mode=voice">
-                   <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full h-10 sm:h-12 text-sm sm:text-base px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105">
+                   <Button className="bg-green-600 hover:bg-green-700 text-white w-full h-10 sm:h-12 text-sm sm:text-base px-4 py-2 rounded-lg">
                      Start Voice Session
                    </Button>
                  </Link>

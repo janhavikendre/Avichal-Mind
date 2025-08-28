@@ -82,10 +82,10 @@ export default function NewSessionPage() {
             {/* Text Session */}
             <AnimatedCard>
                              <Card 
-                 className={`cursor-pointer transition-all duration-300 hover:shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm ${
+                 className={`cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm ${
                    selectedMode === 'text' 
                      ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' 
-                     : 'hover:scale-105'
+                     : ''
                  }`}
                  onClick={() => setSelectedMode('text')}
                >
@@ -118,10 +118,10 @@ export default function NewSessionPage() {
             {/* Voice Session */}
             <AnimatedCard>
                              <Card 
-                 className={`cursor-pointer transition-all duration-300 hover:shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm ${
+                 className={`cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm ${
                    selectedMode === 'voice' 
                      ? 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20' 
-                     : 'hover:scale-105'
+                     : ''
                  }`}
                  onClick={() => setSelectedMode('voice')}
                >
@@ -164,10 +164,10 @@ export default function NewSessionPage() {
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <Button
-                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium transition-all duration-200 ${
+                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium ${
                       selectedLanguage === 'en' 
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25 transform scale-105 hover:bg-purple-700' 
-                        : 'bg-purple-600 text-white border-2 border-purple-600 hover:bg-purple-700 hover:border-purple-700 hover:shadow-md hover:scale-102'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 transform scale-105 hover:bg-blue-700' 
+                        : 'bg-blue-600 text-white border-2 border-blue-600 hover:bg-blue-700 hover:border-blue-700'
                     }`}
                     onClick={() => setSelectedLanguage('en')}
                   >
@@ -178,10 +178,10 @@ export default function NewSessionPage() {
                     </div>
                   </Button>
                   <Button
-                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium transition-all duration-200 ${
+                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium ${
                       selectedLanguage === 'hi' 
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25 transform scale-105 hover:bg-purple-700' 
-                        : 'bg-purple-600 text-white border-2 border-purple-600 hover:bg-purple-700 hover:border-purple-700 hover:shadow-md hover:scale-102'
+                        ? 'bg-green-600 text-white shadow-lg shadow-green-500/25 transform scale-105 hover:bg-green-700' 
+                        : 'bg-green-600 text-white border-2 border-green-600 hover:bg-green-700 hover:border-green-700'
                     }`}
                     onClick={() => setSelectedLanguage('hi')}
                   >
@@ -192,10 +192,10 @@ export default function NewSessionPage() {
                     </div>
                   </Button>
                   <Button
-                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium transition-all duration-200 ${
+                    className={`h-12 sm:h-16 text-sm sm:text-lg font-medium ${
                       selectedLanguage === 'mr' 
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25 transform scale-105 hover:bg-purple-700' 
-                        : 'bg-purple-600 text-white border-2 border-purple-600 hover:bg-purple-700 hover:border-purple-700 hover:shadow-md hover:scale-102'
+                        ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/25 transform scale-105 hover:bg-orange-700' 
+                        : 'bg-orange-600 text-white border-2 border-orange-600 hover:bg-orange-700 hover:border-orange-700'
                     }`}
                     onClick={() => setSelectedLanguage('mr')}
                   >
@@ -213,7 +213,7 @@ export default function NewSessionPage() {
           {/* Start Session Button */}
           <div className="text-center">
             <Button
-              className="text-lg sm:text-xl px-8 sm:px-16 py-4 sm:py-8 bg-purple-600 hover:bg-purple-700 shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 font-bold rounded-2xl w-full sm:w-auto"
+              className="text-lg sm:text-xl px-8 sm:px-16 py-4 sm:py-8 bg-blue-600 hover:bg-blue-700 font-bold rounded-2xl w-full sm:w-auto"
               onClick={createSession}
               disabled={isCreating}
             >

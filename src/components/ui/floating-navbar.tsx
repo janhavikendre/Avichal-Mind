@@ -41,7 +41,7 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               </Button>
             </SignInButton>
             <SignUpButton mode="modal">
-              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white rounded-full">
+                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full">
                 Get Started
               </Button>
             </SignUpButton>

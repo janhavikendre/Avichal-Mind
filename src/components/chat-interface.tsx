@@ -34,6 +34,10 @@ export default function ChatInterface({
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const accumulatedTranscriptRef = useRef<string>('');
+  const [supportsSpeech, setSupportsSpeech] = useState(false);
+  const lastSpokenIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     scrollToBottom();
@@ -42,6 +46,108 @@ export default function ChatInterface({
   useEffect(() => {
     loadMessages();
   }, [sessionId]);
+
+  // Initialize Speech Recognition when in voice mode
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSupportsSpeech(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true; // keep listening across short pauses
+      recognition.interimResults = true;
+      recognition.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            accumulatedTranscriptRef.current += result[0].transcript + ' ';
+          } else {
+            interim += result[0].transcript;
+          }
+        }
+        const combined = (accumulatedTranscriptRef.current + interim).trim();
+        setNewMessage(combined);
+      };
+
+      recognition.onerror = () => {
+        toast.error('Microphone error. Please check permissions.');
+        setIsRecording(false);
+      };
+
+      recognition.onend = async () => {
+        // Chrome stops after short silence; auto-restart if still recording
+        if (isRecording) {
+          try {
+            recognition.start();
+          } catch (_) {
+            // ignore if already started
+          }
+        }
+      };
+
+      recognitionRef.current = recognition;
+    } else {
+      setSupportsSpeech(false);
+    }
+  }, [language, mode]);
+
+  // Speak assistant replies (both modes)
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistant) return;
+    if (lastSpokenIdRef.current === lastAssistant._id) return;
+    lastSpokenIdRef.current = lastAssistant._id;
+    speakText(lastAssistant.contentText);
+  }, [messages, mode]);
+
+  const speakText = (text: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      // ignore TTS errors silently
+    }
+  };
+
+  // Generate summary on unmount (end of session) and expose transcript download
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      void generateAndStoreSummary();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      void generateAndStoreSummary();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, language, messages.length]);
+
+  const getTranscriptText = (): string => {
+    return messages
+      .map(m => `${m.role === 'assistant' ? 'AI' : 'You'}: ${m.contentText}`)
+      .join('\n');
+  };
+
+  const generateAndStoreSummary = async () => {
+    try {
+      await fetch(`/api/session/${sessionId}/summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language }),
+        keepalive: true
+      });
+    } catch (_) {
+      // best-effort; ignore errors during unload
+    }
+  };
 
   const loadMessages = async () => {
     try {
@@ -136,9 +242,33 @@ export default function ChatInterface({
   };
 
   const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    toast(isRecording ? 'Recording stopped' : 'Recording started');
-    // TODO: Implement voice recording functionality
+    if (mode !== 'voice') return;
+    if (!supportsSpeech || !recognitionRef.current) {
+      toast.error('Speech recognition not supported in this browser.');
+      return;
+    }
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      toast('Recording stopped');
+      // finalize and send
+      const finalText = newMessage.trim() || accumulatedTranscriptRef.current.trim();
+      if (finalText.length > 0) {
+        setNewMessage(finalText);
+        sendMessage();
+      }
+      accumulatedTranscriptRef.current = '';
+    } else {
+      setNewMessage('');
+      accumulatedTranscriptRef.current = '';
+      try {
+        recognitionRef.current.start();
+      } catch (_) {
+        // ignore start errors
+      }
+      setIsRecording(true);
+      toast('Recording started');
+    }
   };
 
     return (
@@ -234,13 +364,29 @@ export default function ChatInterface({
         </div>
         
         {/* Mode and Language Badges */}
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-2 items-center">
           <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
             {mode === 'voice' ? 'Voice' : 'Text'}
           </Badge>
           <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
             {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
           </Badge>
+          <Button
+            className="ml-auto bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-xs sm:text-sm"
+            onClick={() => {
+              const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `session-${sessionId}-transcript.txt`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download Transcript
+          </Button>
         </div>
       </div>
     </div>
