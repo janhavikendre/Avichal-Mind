@@ -141,19 +141,19 @@ export default function ChatInterface({
     // TODO: Implement voice recording functionality
   };
 
-  return (
+    return (
     <div className="flex flex-col h-full">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {isLoading ? (
-          <div className="text-center text-gray-500 mt-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading conversation...</p>
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-sm sm:text-base">Loading conversation...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            <p>Start your conversation here...</p>
-            <p className="text-sm mt-2">
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+            <p className="text-sm sm:text-base">Start your conversation here...</p>
+            <p className="text-xs sm:text-sm mt-2">
               {language === 'hi' ? 'अपनी बातचीत यहाँ शुरू करें...' : 
                language === 'mr' ? 'तुमची संवाद येथे सुरू करा...' : 
                'Begin your wellness journey'}
@@ -165,26 +165,26 @@ export default function ChatInterface({
               key={message._id}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <Card className={`max-w-[80%] ${
+              <Card className={`max-w-[85%] sm:max-w-[80%] ${
                 message.role === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100'
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
               }`}>
-                <CardContent className="p-3">
+                <CardContent className="p-2 sm:p-3">
                   <div className="flex items-start space-x-2">
                     <div className="flex-1">
-                      <p className="text-sm">{message.contentText}</p>
+                      <p className="text-xs sm:text-sm">{message.contentText}</p>
                       <p className={`text-xs mt-1 ${
-                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                        message.role === 'user' ? 'text-purple-100' : 'text-gray-500 dark:text-gray-400'
                       }`}>
                         {new Date(message.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
-                                         {message.role === 'assistant' && message.contentAudioUrl && (
-                                               <Button className="text-sm bg-purple-600 hover:bg-purple-700 text-white">
-                          🔊
-                        </Button>
-                     )}
+                    {message.role === 'assistant' && message.contentAudioUrl && (
+                      <Button className="text-xs sm:text-sm bg-purple-600 hover:bg-purple-700 text-white p-1 sm:p-2">
+                        🔊
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -195,7 +195,7 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t p-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4">
         <div className="flex space-x-2">
           <div className="flex-1">
             <textarea
@@ -209,39 +209,39 @@ export default function ChatInterface({
                   ? 'तुमचा संदेश येथे लिहा...'
                   : 'Type your message here...'
               }
-              className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               rows={2}
               disabled={isSending}
             />
           </div>
           <div className="flex flex-col space-y-2">
-                         {mode === 'voice' && (
-                               <Button
-                  onClick={toggleRecording}
-                  className={`h-10 w-10 p-0 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
-                >
-                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-                </Button>
-             )}
-                           <Button
-                onClick={sendMessage}
-                disabled={!newMessage.trim() || isSending}
-                className="h-10 w-10 p-0 bg-purple-600 hover:bg-purple-700 text-white"
+            {mode === 'voice' && (
+              <Button
+                onClick={toggleRecording}
+                className={`h-8 w-8 sm:h-10 sm:w-10 p-0 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
               >
-                <Send size={16} />
+                {isRecording ? <MicOff size={14} className="sm:w-4 sm:h-4" /> : <Mic size={14} className="sm:w-4 sm:h-4" />}
               </Button>
+            )}
+            <Button
+              onClick={sendMessage}
+              disabled={!newMessage.trim() || isSending}
+              className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Send size={14} className="sm:w-4 sm:h-4" />
+            </Button>
           </div>
         </div>
         
-                 {/* Mode and Language Badges */}
-         <div className="flex space-x-2 mt-2">
-           <Badge>
-             {mode === 'voice' ? 'Voice' : 'Text'}
-           </Badge>
-                       <Badge>
-              {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
-            </Badge>
-         </div>
+        {/* Mode and Language Badges */}
+        <div className="flex flex-wrap gap-2 mt-2">
+          <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+            {mode === 'voice' ? 'Voice' : 'Text'}
+          </Badge>
+          <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+            {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
+          </Badge>
+        </div>
       </div>
     </div>
   );

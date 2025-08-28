@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AnimatedCard } from '@/components/ui/animated-card';
+import { FloatingNavbar } from '@/components/ui/floating-navbar';
 import { useUser } from '@clerk/nextjs';
 import { toast } from 'react-hot-toast';
 import { formatDate } from '@/lib/utils';
@@ -111,59 +113,61 @@ export default function SessionPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-                             <Button
-                 onClick={() => router.push('/dashboard')}
-                 className="bg-purple-600 hover:bg-purple-700 text-white"
-               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+      <FloatingNavbar />
+      
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pt-24">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <Button
+                onClick={() => router.push('/dashboard')}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base px-3 sm:px-4 py-2"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                Back
+                Back to Dashboard
               </Button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                   {session.mode === 'voice' ? 'Voice' : 'Text'} Session
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   Started {formatDate(new Date(session.startedAt))}
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                 {session.mode === 'voice' ? 'Voice' : 'Text'}
               </Badge>
-                             <Badge>
-                 {session.language === 'hi' ? 'Hindi' : session.language === 'mr' ? 'Marathi' : 'English'}
-               </Badge>
+              <Badge className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                {session.language === 'hi' ? 'Hindi' : session.language === 'mr' ? 'Marathi' : 'English'}
+              </Badge>
               {session.safetyFlags.crisis && (
-                <Badge>Crisis Flagged</Badge>
+                <Badge className="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Crisis Flagged</Badge>
               )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Chat Interface */}
-      <div className="container mx-auto px-4 py-6">
+        {/* Chat Interface */}
         <div className="max-w-4xl mx-auto">
-          <Card className="h-[600px]">
-            <CardContent className="p-0 h-full">
-              <ChatInterface
-                sessionId={sessionId}
-                mode={session.mode}
-                language={session.language}
-                onMessageSent={handleMessageSent}
-              />
-            </CardContent>
-          </Card>
+          <AnimatedCard>
+            <Card className="h-[500px] sm:h-[600px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+              <CardContent className="p-0 h-full">
+                <ChatInterface
+                  sessionId={sessionId}
+                  mode={session.mode}
+                  language={session.language}
+                  onMessageSent={handleMessageSent}
+                />
+              </CardContent>
+            </Card>
+          </AnimatedCard>
         </div>
       </div>
     </div>
