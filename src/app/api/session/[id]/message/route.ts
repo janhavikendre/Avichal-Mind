@@ -122,72 +122,8 @@ export async function POST(
     session.messageCount = (session.messageCount || 0) + 2;
     await session.save();
 
-    // Update user gamification stats
-    // Update user stats
-    user.stats.totalSessions = (user.stats.totalSessions || 0) + 1;
-    user.stats.totalMessages = (user.stats.totalMessages || 0) + session.messageCount;
-    
-    // Update languages and modes used
-    if (!user.stats.languagesUsed.includes(session.language)) {
-      user.stats.languagesUsed.push(session.language);
-    }
-    if (!user.stats.modesUsed.includes(session.mode)) {
-      user.stats.modesUsed.push(session.mode);
-    }
-    
-    // Update first and last session dates
-    if (!user.stats.firstSessionDate) {
-      user.stats.firstSessionDate = new Date();
-    }
-    user.stats.lastSessionDate = new Date();
-    
-    // Update streak
-    const newStreak = gamificationService.updateStreak(user, new Date());
-    user.streak.current = newStreak.current;
-    user.streak.longest = newStreak.longest;
-    user.streak.lastSessionDate = new Date();
-    
-    // Award points
-    const pointsEarned = gamificationService.awardSessionPoints(session);
-    user.points = (user.points || 0) + pointsEarned;
-    user.level = gamificationService.calculateLevel(user.points);
-    
-    // Check for new badges
-    const newBadges = gamificationService.checkBadges(user);
-    for (const badge of newBadges) {
-      user.badges.push({
-        id: badge.id,
-        name: badge.name,
-        description: badge.description,
-        icon: badge.icon,
-        unlockedAt: new Date(),
-        category: badge.category as any
-      });
-    }
-    
-               // Check for new achievements
-           const newAchievements = gamificationService.checkAchievements(user);
-           for (const achievement of newAchievements) {
-             const existingAchievement = user.achievements.find((a: any) => a.id === achievement.id);
-      if (existingAchievement) {
-        existingAchievement.progress = achievement.progress;
-        if (achievement.completed && !existingAchievement.completed) {
-          existingAchievement.completed = true;
-          existingAchievement.completedAt = new Date();
-        }
-      } else {
-        user.achievements.push({
-          id: achievement.id,
-          name: achievement.name,
-          description: achievement.description,
-          progress: achievement.progress,
-          target: achievement.target,
-          completed: achievement.completed,
-          completedAt: achievement.completed ? new Date() : undefined,
-          category: achievement.category as any
-        });
-      }
-    }
+    // Update user gamification stats - only message-related stats
+    user.stats.totalMessages = (user.stats.totalMessages || 0) + 2; // +2 for user message + AI response
     
     await user.save();
 
