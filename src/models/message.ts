@@ -10,6 +10,20 @@ export interface IMessage extends Document {
   createdAt: Date;
   audioDuration?: number; // in seconds
   processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  videoSuggestions: {
+    id: string;
+    title: string;
+    description?: string;
+    thumbnail: string;
+    channelTitle: string;
+    publishedAt?: string;
+    duration?: string;
+    viewCount?: string;
+    url: string;
+    embedUrl: string;
+    relevance?: string;
+    language?: string;
+  }[];
 }
 
 const messageSchema = new Schema<IMessage>({
@@ -55,6 +69,20 @@ const messageSchema = new Schema<IMessage>({
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'completed',
   },
+  videoSuggestions: [{
+    id: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String },
+    thumbnail: { type: String, required: true },
+    channelTitle: { type: String, required: true },
+    publishedAt: { type: String },
+    duration: { type: String },
+    viewCount: { type: String },
+    url: { type: String, required: true },
+    embedUrl: { type: String, required: true },
+    relevance: { type: String, default: 'Based on your conversation' },
+    language: { type: String, default: 'en' }
+  }],
 }, {
   timestamps: true,
 });

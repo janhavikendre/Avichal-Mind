@@ -49,7 +49,7 @@ export default function NewSessionPage() {
       if (response.ok) {
         const data = await response.json();
         toast.success('Session created successfully!');
-        router.push(`/session/${data.id}`);
+        router.push(`/session/${data.id}/continue`);
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to create session');

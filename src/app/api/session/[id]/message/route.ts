@@ -5,6 +5,7 @@ import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
 import { Message } from '@/models/message';
 import { geminiService } from '@/lib/gemini';
+import { youtubeService } from '@/lib/youtube';
 
 export async function POST(
   request: NextRequest,
@@ -64,14 +65,55 @@ export async function POST(
     // Generate AI response using Gemini
     const aiResponse = await geminiService.generateResponse(content, session.language);
     
+    // Get relevant video suggestions only for specific emotional/mental health topics
+    let videoSuggestions: any[] = [];
+    let enhancedResponse = aiResponse;
+    
+    try {
+      // Check if the conversation is about specific emotional/mental health topics
+      const emotionalKeywords = [
+        'stress', 'stressed', 'anxiety', 'depression', 'sad', 'lonely', 'bored', 'boredom',
+        'angry', 'frustrated', 'overwhelmed', 'tired', 'exhausted', 'worried', 'fear',
+        'panic', 'mood', 'emotion', 'feeling', 'mental health', 'therapy', 'counseling',
+        'meditation', 'relaxation', 'breathing', 'sleep', 'insomnia', 'grief', 'loss',
+        'relationship', 'family', 'work stress', 'burnout', 'self-care', 'wellness'
+      ];
+      
+      const hasEmotionalContent = emotionalKeywords.some(keyword => 
+        content.toLowerCase().includes(keyword) || aiResponse.toLowerCase().includes(keyword)
+      );
+      
+      // Only show videos for emotional/mental health topics
+      if (hasEmotionalContent) {
+        // Create conversation context for video search
+        const conversationContext = `${content} ${aiResponse}`;
+        videoSuggestions = await youtubeService.getRelevantVideos(conversationContext, session.language);
+        
+        // Enhance AI response to naturally mention the videos
+        if (videoSuggestions.length > 0) {
+          const videoMention = session.language === 'hi' 
+            ? `\n\nमैंने आपके लिए कुछ उपयोगी वीडियो भी ढूंढे हैं जो आपकी मदद कर सकते हैं। नीचे दिए गए वीडियो देखें और कुछ देर आराम करें।`
+            : session.language === 'mr'
+            ? `\n\nमी तुमच्यासाठी काही उपयुक्त व्हिडिओ शोधले आहेत जे तुमची मदत करू शकतात. खाली दिलेले व्हिडिओ बघा आणि थोडा वेळ विश्रांती घ्या.`
+            : `\n\nI've also found some helpful videos that might be useful for you. Take a look at the videos below and take a breather.`;
+          
+          enhancedResponse = aiResponse + videoMention;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting video suggestions:', error);
+      // Continue without video suggestions if there's an error
+    }
+
     // Save AI message
     const assistantMessage = new Message({
       sessionId: session._id,
       role: 'assistant',
-      contentText: aiResponse,
+      contentText: enhancedResponse,
       contentAudioUrl: null, // TODO: Add TTS
       tokensIn: 0,
-      tokensOut: aiResponse.length,
+      tokensOut: enhancedResponse.length,
+      videoSuggestions: videoSuggestions,
     });
     await assistantMessage.save();
 
@@ -83,9 +125,10 @@ export async function POST(
       message: {
         _id: assistantMessage._id,
         role: 'assistant',
-        contentText: aiResponse,
+        contentText: enhancedResponse,
         contentAudioUrl: null,
         createdAt: assistantMessage.createdAt,
+        videoSuggestions: videoSuggestions,
       }
     });
   } catch (error) {
