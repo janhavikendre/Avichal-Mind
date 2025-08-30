@@ -18,7 +18,7 @@ export async function GET() {
     const progress = gamificationService.getUserProgress(user);
 
     // Get user's badges
-    const badges = user.badges.map(badge => ({
+    const badges = user.badges.map((badge: any) => ({
       id: badge.id,
       name: badge.name,
       description: badge.description,
@@ -28,7 +28,7 @@ export async function GET() {
     }));
 
     // Get user's achievements with current progress
-    const achievements = gamificationService.checkAchievements(user).map(achievement => ({
+    const achievements = gamificationService.checkAchievements(user).map((achievement: any) => ({
       id: achievement.id,
       name: achievement.name,
       description: achievement.description,
