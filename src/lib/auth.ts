@@ -22,22 +22,39 @@ export async function getOrCreateUser(clerkUserId: string) {
         console.log('✅ Clerk user data received:', {
           id: clerkUser.id,
           email: clerkUser.email_addresses?.[0]?.email_address,
-          name: `${clerkUser.first_name || ''} ${clerkUser.last_name || ''}`.trim()
+          firstName: clerkUser.first_name,
+          lastName: clerkUser.last_name
         });
         
         const email = clerkUser.email_addresses?.[0]?.email_address || '';
-        const name = `${clerkUser.first_name || ''} ${clerkUser.last_name || ''}`.trim() || 'User';
+        const firstName = clerkUser.first_name || '';
+        const lastName = clerkUser.last_name || '';
         
-        console.log('🔍 Creating user with data:', { clerkUserId, email, name });
+        console.log('🔍 Creating user with data:', { clerkUserId, email, firstName, lastName });
         user = new User({
           clerkUserId,
           email,
-          name,
-          preferences: {
-            language: 'en',
-            voiceEnabled: true,
-            notifications: true,
+          firstName,
+          lastName,
+          // Initialize gamification fields
+          points: 0,
+          level: 1,
+          streak: {
+            current: 0,
+            longest: 0,
+            lastSessionDate: null
           },
+          badges: [],
+          achievements: [],
+          stats: {
+            totalSessions: 0,
+            totalMessages: 0,
+            totalDuration: 0,
+            languagesUsed: [],
+            modesUsed: [],
+            firstSessionDate: null,
+            lastSessionDate: null
+          }
         });
         console.log('🔍 Saving user to database...');
         await user.save();
@@ -49,6 +66,56 @@ export async function getOrCreateUser(clerkUserId: string) {
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
+    }
+  } else {
+    // Initialize gamification fields for existing users if they don't exist
+    let needsUpdate = false;
+    
+    if (!user.points) {
+      user.points = 0;
+      needsUpdate = true;
+    }
+    
+    if (!user.level) {
+      user.level = 1;
+      needsUpdate = true;
+    }
+    
+    if (!user.streak) {
+      user.streak = {
+        current: 0,
+        longest: 0,
+        lastSessionDate: null
+      };
+      needsUpdate = true;
+    }
+    
+    if (!user.badges) {
+      user.badges = [];
+      needsUpdate = true;
+    }
+    
+    if (!user.achievements) {
+      user.achievements = [];
+      needsUpdate = true;
+    }
+    
+    if (!user.stats) {
+      user.stats = {
+        totalSessions: 0,
+        totalMessages: 0,
+        totalDuration: 0,
+        languagesUsed: [],
+        modesUsed: [],
+        firstSessionDate: null,
+        lastSessionDate: null
+      };
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      await user.save();
+      console.log('🔍 Updated existing user with gamification fields');
     }
   }
   

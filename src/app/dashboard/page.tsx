@@ -118,7 +118,7 @@ export default function DashboardPage() {
           </div>
         </div>
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <AnimatedCard>
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-2">
@@ -149,7 +149,7 @@ export default function DashboardPage() {
           </AnimatedCard>
           
           <AnimatedCard>
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sm:col-span-2 lg:col-span-1">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total Messages</CardTitle>
               </CardHeader>
@@ -157,6 +157,21 @@ export default function DashboardPage() {
                 <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {sessions.reduce((total, session) => total + session.messageCount, 0)}
                 </div>
+              </CardContent>
+            </Card>
+          </AnimatedCard>
+
+          <AnimatedCard>
+            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium text-purple-100">Achievement Center</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Link href="/gamification">
+                  <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
+                    🏆 View Achievements
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </AnimatedCard>
