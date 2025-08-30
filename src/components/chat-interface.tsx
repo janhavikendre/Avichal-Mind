@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Send, Mic, MicOff } from 'lucide-react';
+import { Send, Mic, MicOff, Play, Pause } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface Message {
@@ -20,13 +20,15 @@ interface ChatInterfaceProps {
   mode: 'text' | 'voice';
   language: 'en' | 'hi' | 'mr';
   onMessageSent?: (message: Message) => void;
+  isContinueSession?: boolean; // New prop to detect if this is a continue session
 }
 
 export default function ChatInterface({ 
   sessionId, 
   mode, 
   language, 
-  onMessageSent 
+  onMessageSent,
+  isContinueSession = false // Default to false for backward compatibility
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -34,6 +36,7 @@ export default function ChatInterface({
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const accumulatedTranscriptRef = useRef<string>('');
@@ -95,26 +98,56 @@ export default function ChatInterface({
     }
   }, [language, mode]);
 
-  // Speak assistant replies (both modes)
+  // Auto-voice for continue sessions (ongoing conversations)
   useEffect(() => {
-    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-    if (!lastAssistant) return;
-    if (lastSpokenIdRef.current === lastAssistant._id) return;
-    lastSpokenIdRef.current = lastAssistant._id;
-    speakText(lastAssistant.contentText);
-  }, [messages, mode]);
+    if (isContinueSession) {
+      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+      if (!lastAssistant) return;
+      if (lastSpokenIdRef.current === lastAssistant._id) return;
+      lastSpokenIdRef.current = lastAssistant._id;
+      speakText(lastAssistant.contentText);
+    }
+  }, [messages, isContinueSession]);
 
-  const speakText = (text: string) => {
+  const speakText = (text: string, messageId?: string) => {
     if (typeof window === 'undefined') return;
+    
+    // Stop any currently playing speech
+    window.speechSynthesis.cancel();
+    
     try {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
       utterance.rate = 1;
       utterance.pitch = 1;
-      window.speechSynthesis.cancel();
+      
+      if (messageId) {
+        setPlayingMessageId(messageId);
+      }
+      
+      utterance.onend = () => {
+        setPlayingMessageId(null);
+      };
+      
+      utterance.onerror = () => {
+        setPlayingMessageId(null);
+      };
+      
       window.speechSynthesis.speak(utterance);
     } catch (e) {
-      // ignore TTS errors silently
+      setPlayingMessageId(null);
+      console.error('TTS error:', e);
+    }
+  };
+
+  const playMessage = (message: Message) => {
+    if (playingMessageId === message._id) {
+      // Stop playing
+      window.speechSynthesis.cancel();
+      setPlayingMessageId(null);
+    } else {
+      // Play this message
+      speakText(message.contentText, message._id);
     }
   };
 
@@ -130,6 +163,16 @@ export default function ChatInterface({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, language, messages.length]);
+
+  // Stop speech when component unmounts or user navigates away
+  useEffect(() => {
+    return () => {
+      // Stop any playing speech when component unmounts
+      if (typeof window !== 'undefined') {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const getTranscriptText = (): string => {
     return messages
@@ -335,10 +378,23 @@ export default function ChatInterface({
                           {new Date(message.createdAt).toLocaleTimeString()}
                         </p>
                       </div>
-                      {message.role === 'assistant' && message.contentAudioUrl && (
-                        <Button className="text-xs sm:text-sm bg-purple-600 hover:bg-purple-700 text-white p-1 sm:p-2">
-                          🔊
-                        </Button>
+                      {message.role === 'assistant' && !isContinueSession && (
+                        <div className="mt-2 flex space-x-2">
+                          <Button 
+                            onClick={() => playMessage(message)}
+                            className={`text-xs sm:text-sm px-2 py-1 border ${
+                              playingMessageId === message._id 
+                                ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
+                                : 'bg-white hover:bg-gray-50 text-red-600 border-red-600'
+                            }`}
+                            title={playingMessageId === message._id ? 'Stop' : 'Play'}
+                          >
+                            {playingMessageId === message._id ? 
+                              <Pause size={12} className="sm:w-3 sm:h-3" /> : 
+                              <Play size={12} className="sm:w-3 sm:h-3" />
+                            }
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>

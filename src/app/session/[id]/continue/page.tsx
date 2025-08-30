@@ -2,15 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedCard } from '@/components/ui/animated-card';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
-import { useUser } from '@clerk/nextjs';
+import ChatInterface from '@/components/chat-interface';
+import { ArrowLeft, MessageCircle, Mic, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { formatDate } from '@/lib/utils';
-import { ArrowLeft, MessageCircle, Mic, Clock, Play, Pause } from 'lucide-react';
+
+interface Session {
+  _id: string;
+  mode: 'text' | 'voice';
+  language: 'en' | 'hi' | 'mr';
+  startedAt: string;
+  completedAt?: string;
+  summary?: string;
+  messageCount: number;
+  totalDuration?: number;
+  safetyFlags: {
+    crisis: boolean;
+    pii: boolean;
+  };
+}
 
 interface Message {
   _id: string;
@@ -20,98 +35,55 @@ interface Message {
   createdAt: string;
 }
 
-interface Session {
-  _id: string;
-  mode: 'text' | 'voice';
-  language: 'en' | 'hi' | 'mr';
-  startedAt: string;
-  completedAt?: string;
-  summary?: string;
-  safetyFlags: {
-    crisis: boolean;
-    pii: boolean;
-  };
-  messageCount: number;
-  totalDuration?: number;
-}
-
-export default function SessionPage() {
-  const { user, isLoaded } = useUser();
+export default function ContinueSessionPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
-  
+  const { user, isLoaded } = useUser();
   const [session, setSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const sessionId = params.id as string;
 
   useEffect(() => {
-    if (sessionId) {
-      setIsLoading(true);
-      fetchSession();
+    if (isLoaded && user) {
+      loadSession();
     }
-  }, [sessionId]);
+  }, [isLoaded, user, sessionId]);
 
-  const fetchSession = async () => {
+  const loadSession = async () => {
     try {
-      const response = await fetch(`/api/session/${sessionId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setSession(data.session);
-        setMessages(data.messages || []);
-      } else {
-        toast.error('Failed to load session');
-        router.push('/dashboard');
+      setIsLoading(true);
+      setError(null);
+
+      // Load session details
+      const sessionResponse = await fetch(`/api/session/${sessionId}`);
+      if (!sessionResponse.ok) {
+        throw new Error('Session not found');
       }
-    } catch (error) {
-      console.error('Error fetching session:', error);
+      const sessionData = await sessionResponse.json();
+      setSession(sessionData.session);
+      setMessages(sessionData.messages || []);
+
+      // Check if session is already completed
+      if (sessionData.session.completedAt) {
+        toast.error('This session has already been completed. You can only view it.');
+        router.push(`/session/${sessionId}`);
+        return;
+      }
+
+    } catch (err) {
+      console.error('Error loading session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load session');
       toast.error('Failed to load session');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const speakText = (text: string, messageId?: string) => {
-    if (typeof window === 'undefined') return;
-    
-    // Stop any currently playing speech
-    window.speechSynthesis.cancel();
-    
-    try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = session?.language === 'hi' ? 'hi-IN' : session?.language === 'mr' ? 'mr-IN' : 'en-US';
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      
-      if (messageId) {
-        setPlayingMessageId(messageId);
-      }
-      
-      utterance.onend = () => {
-        setPlayingMessageId(null);
-      };
-      
-      utterance.onerror = () => {
-        setPlayingMessageId(null);
-      };
-      
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      setPlayingMessageId(null);
-      console.error('TTS error:', e);
-    }
-  };
-
-  const playMessage = (message: Message) => {
-    if (playingMessageId === message._id) {
-      // Stop playing
-      window.speechSynthesis.cancel();
-      setPlayingMessageId(null);
-    } else {
-      // Play this message
-      speakText(message.contentText, message._id);
-    }
+  const handleMessageSent = (message: Message) => {
+    setMessages(prev => [...prev, message]);
   };
 
   if (!isLoaded) {
@@ -126,16 +98,58 @@ export default function SessionPage() {
   }
 
   if (!user) {
-    router.push('/sign-in');
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Please sign in to continue</h1>
+          <Button onClick={() => router.push('/sign-in')} className="bg-purple-600 hover:bg-purple-700 text-white">
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+        <FloatingNavbar />
+        <div className="container mx-auto px-4 py-8">
+          <AnimatedCard>
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+              <CardContent className="text-center py-8">
+                <div className="text-red-400 mb-4">
+                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Error Loading Session</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={() => router.push('/dashboard')} className="bg-gray-600 hover:bg-gray-700 text-white">
+                    Back to Dashboard
+                  </Button>
+                  <Button onClick={loadSession} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Try Again
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </AnimatedCard>
+        </div>
+      </div>
+    );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading session...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950">
+        <FloatingNavbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading session...</p>
+          </div>
         </div>
       </div>
     );
@@ -178,27 +192,18 @@ export default function SessionPage() {
             Back to Dashboard
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {session.completedAt ? 'Session History' : 'View Session'}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              {session.completedAt ? 'Review your completed conversation' : 'View your ongoing conversation'}
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Continue Session</h1>
+            <p className="text-gray-600 dark:text-gray-400">Resume your conversation where you left off</p>
           </div>
-          {!session.completedAt && (
-            <Button
-              onClick={() => router.push(`/session/${sessionId}/continue`)}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
-            >
-              Continue Session
-            </Button>
-          )}
         </div>
 
         {/* Session Info */}
         <AnimatedCard>
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm mb-6">
-            <CardContent className="p-6">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-900 dark:text-white">Session Details</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
                   {session.mode === 'voice' ? (
@@ -220,7 +225,7 @@ export default function SessionPage() {
                   <Clock className="h-5 w-5 text-green-600" />
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {session.completedAt ? 'Completed' : 'Started'} {formatDate(new Date(session.startedAt))}
+                      Started {new Date(session.startedAt).toLocaleDateString()}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       at {new Date(session.startedAt).toLocaleTimeString()}
@@ -255,7 +260,7 @@ export default function SessionPage() {
               {session.summary && (
                 <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    <strong>Session Summary:</strong> {session.summary}
+                    <strong>Previous Summary:</strong> {session.summary}
                   </p>
                 </div>
               )}
@@ -263,61 +268,17 @@ export default function SessionPage() {
           </Card>
         </AnimatedCard>
 
-        {/* Messages - Read Only */}
+        {/* Chat Interface */}
         <AnimatedCard>
           <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-[600px] sm:h-[700px]">
-            <CardContent className="p-4 h-full overflow-y-auto">
-              {messages.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-                  <p className="text-sm sm:text-base">No messages in this session.</p>
-                </div>
-              ) : (
-                <div className="space-y-3 sm:space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message._id}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <Card className={`max-w-[85%] sm:max-w-[80%] ${
-                        message.role === 'user' 
-                          ? 'bg-purple-600 text-white' 
-                          : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
-                      }`}>
-                        <CardContent className="p-2 sm:p-3">
-                          <div className="flex flex-col">
-                            <div className="flex-1">
-                              <p className="text-xs sm:text-sm">{message.contentText}</p>
-                              <p className={`text-xs mt-1 ${
-                                message.role === 'user' ? 'text-purple-100' : 'text-gray-500 dark:text-gray-400'
-                              }`}>
-                                {new Date(message.createdAt).toLocaleTimeString()}
-                              </p>
-                            </div>
-                            {message.role === 'assistant' && (
-                              <div className="mt-2 flex space-x-2">
-                                <Button 
-                                  onClick={() => playMessage(message)}
-                                  className={`text-xs sm:text-sm px-2 py-1 border ${
-                                    playingMessageId === message._id 
-                                      ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' 
-                                      : 'bg-white hover:bg-gray-50 text-red-600 border-red-600'
-                                  }`}
-                                  title={playingMessageId === message._id ? 'Stop' : 'Play'}
-                                >
-                                  {playingMessageId === message._id ? 
-                                    <Pause size={12} className="sm:w-3 sm:h-3" /> : 
-                                    <Play size={12} className="sm:w-3 sm:h-3" />
-                                  }
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <CardContent className="p-0 h-full">
+              <ChatInterface
+                sessionId={sessionId}
+                mode={session.mode}
+                language={session.language}
+                onMessageSent={handleMessageSent}
+                isContinueSession={true}
+              />
             </CardContent>
           </Card>
         </AnimatedCard>
