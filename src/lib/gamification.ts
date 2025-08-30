@@ -307,10 +307,8 @@ class GamificationService {
   }
 
   // Check and update achievements
-  checkAchievements(user: IUser): Array<{
-    category: any; id: string; name: string; description: string; progress: number; target: number; completed: boolean 
-}> {
-    const updatedAchievements: Array<{ id: string; name: string; description: string; progress: number; target: number; completed: boolean }> = [];
+  checkAchievements(user: IUser): Array<{ id: string; name: string; description: string; progress: number; target: number; completed: boolean; category: string }> {
+    const updatedAchievements: Array<{ id: string; name: string; description: string; progress: number; target: number; completed: boolean; category: string }> = [];
     const existingAchievementIds = user.achievements.map((achievement: any) => achievement.id);
 
     for (const achievement of this.achievements) {
@@ -318,27 +316,29 @@ class GamificationService {
       const completed = progress >= achievement.target;
       const existingAchievement = user.achievements.find((a: any) => a.id === achievement.id);
 
-      if (!existingAchievement) {
-        // New achievement
-        updatedAchievements.push({
-          id: achievement.id,
-          name: achievement.name,
-          description: achievement.description,
-          progress,
-          target: achievement.target,
-          completed
-        });
-      } else if (existingAchievement.progress !== progress) {
-        // Update existing achievement progress
-        updatedAchievements.push({
-          id: achievement.id,
-          name: achievement.name,
-          description: achievement.description,
-          progress,
-          target: achievement.target,
-          completed
-        });
-      }
+             if (!existingAchievement) {
+         // New achievement
+         updatedAchievements.push({
+           id: achievement.id,
+           name: achievement.name,
+           description: achievement.description,
+           progress,
+           target: achievement.target,
+           completed,
+           category: achievement.category
+         });
+       } else if (existingAchievement.progress !== progress) {
+         // Update existing achievement progress
+         updatedAchievements.push({
+           id: achievement.id,
+           name: achievement.name,
+           description: achievement.description,
+           progress,
+           target: achievement.target,
+           completed,
+           category: achievement.category
+         });
+       }
     }
 
     return updatedAchievements;
