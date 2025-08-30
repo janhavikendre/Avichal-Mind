@@ -289,7 +289,7 @@ class GamificationService {
   // Check and award badges
   checkBadges(user: IUser): Array<{ id: string; name: string; description: string; icon: string; category: string }> {
     const unlockedBadges: Array<{ id: string; name: string; description: string; icon: string; category: string }> = [];
-    const existingBadgeIds = user.badges.map(badge => badge.id);
+    const existingBadgeIds = user.badges.map((badge: any) => badge.id);
 
     for (const badge of this.badges) {
       if (!existingBadgeIds.includes(badge.id) && badge.condition(user)) {
@@ -307,14 +307,16 @@ class GamificationService {
   }
 
   // Check and update achievements
-  checkAchievements(user: IUser): Array<{ id: string; name: string; description: string; progress: number; target: number; completed: boolean }> {
+  checkAchievements(user: IUser): Array<{
+    category: any; id: string; name: string; description: string; progress: number; target: number; completed: boolean 
+}> {
     const updatedAchievements: Array<{ id: string; name: string; description: string; progress: number; target: number; completed: boolean }> = [];
-    const existingAchievementIds = user.achievements.map(achievement => achievement.id);
+    const existingAchievementIds = user.achievements.map((achievement: any) => achievement.id);
 
     for (const achievement of this.achievements) {
       const progress = achievement.getProgress(user);
       const completed = progress >= achievement.target;
-      const existingAchievement = user.achievements.find(a => a.id === achievement.id);
+      const existingAchievement = user.achievements.find((a: any) => a.id === achievement.id);
 
       if (!existingAchievement) {
         // New achievement

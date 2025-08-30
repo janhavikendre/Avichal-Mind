@@ -165,10 +165,10 @@ export async function POST(
       });
     }
     
-    // Check for new achievements
-    const newAchievements = gamificationService.checkAchievements(user);
-    for (const achievement of newAchievements) {
-      const existingAchievement = user.achievements.find(a => a.id === achievement.id);
+               // Check for new achievements
+           const newAchievements = gamificationService.checkAchievements(user);
+           for (const achievement of newAchievements) {
+             const existingAchievement = user.achievements.find((a: any) => a.id === achievement.id);
       if (existingAchievement) {
         existingAchievement.progress = achievement.progress;
         if (achievement.completed && !existingAchievement.completed) {
