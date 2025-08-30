@@ -33,6 +33,7 @@ export default function ChatInterface({
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const accumulatedTranscriptRef = useRef<string>('');
@@ -41,7 +42,7 @@ export default function ChatInterface({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   useEffect(() => {
     loadMessages();
@@ -171,6 +172,7 @@ export default function ChatInterface({
     if (!newMessage.trim() || isSending) return;
 
     setIsSending(true);
+    setIsTyping(true);
     const userMessage = newMessage.trim();
     setNewMessage('');
 
@@ -231,6 +233,7 @@ export default function ChatInterface({
       setMessages(prev => prev.filter(msg => msg._id !== tempUserMessage._id));
     } finally {
       setIsSending(false);
+      setIsTyping(false);
     }
   };
 
@@ -251,11 +254,10 @@ export default function ChatInterface({
       recognitionRef.current.stop();
       setIsRecording(false);
       toast('Recording stopped');
-      // finalize and send
+      // Don't auto-send - just stop recording and let user review/edit text
       const finalText = newMessage.trim() || accumulatedTranscriptRef.current.trim();
       if (finalText.length > 0) {
         setNewMessage(finalText);
-        sendMessage();
       }
       accumulatedTranscriptRef.current = '';
     } else {
@@ -271,7 +273,29 @@ export default function ChatInterface({
     }
   };
 
-    return (
+  // Typing indicator component
+  const TypingIndicator = () => (
+    <div className="flex justify-start">
+      <Card className="max-w-[85%] sm:max-w-[80%] bg-gray-100 dark:bg-gray-700 dark:text-white">
+        <CardContent className="p-2 sm:p-3">
+          <div className="flex items-center space-x-2">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {language === 'hi' ? 'AI टाइप कर रहा है...' : 
+               language === 'mr' ? 'AI टाइप करत आहे...' : 
+               'AI is typing...'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
     <div className="flex flex-col h-full">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
@@ -290,36 +314,39 @@ export default function ChatInterface({
             </p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message._id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <Card className={`max-w-[85%] sm:max-w-[80%] ${
-                message.role === 'user' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
-              }`}>
-                <CardContent className="p-2 sm:p-3">
-                  <div className="flex items-start space-x-2">
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm">{message.contentText}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.role === 'user' ? 'text-purple-100' : 'text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {new Date(message.createdAt).toLocaleTimeString()}
-                      </p>
+          <>
+            {messages.map((message) => (
+              <div
+                key={message._id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <Card className={`max-w-[85%] sm:max-w-[80%] ${
+                  message.role === 'user' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-100 dark:bg-gray-700 dark:text-white'
+                }`}>
+                  <CardContent className="p-2 sm:p-3">
+                    <div className="flex items-start space-x-2">
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm">{message.contentText}</p>
+                        <p className={`text-xs mt-1 ${
+                          message.role === 'user' ? 'text-purple-100' : 'text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {new Date(message.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      {message.role === 'assistant' && message.contentAudioUrl && (
+                        <Button className="text-xs sm:text-sm bg-purple-600 hover:bg-purple-700 text-white p-1 sm:p-2">
+                          🔊
+                        </Button>
+                      )}
                     </div>
-                    {message.role === 'assistant' && message.contentAudioUrl && (
-                      <Button className="text-xs sm:text-sm bg-purple-600 hover:bg-purple-700 text-white p-1 sm:p-2">
-                        🔊
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+            {isTyping && <TypingIndicator />}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
