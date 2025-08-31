@@ -1,40 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/user';
+import { Session } from '@/models/session';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Testing database connection...');
-    console.log('🔍 MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('🔍 MONGODB_URI preview:', process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 30) + '...' : 'Not set');
+    console.log('🧪 Testing database connection and environment...');
     
-    await connectDB();
+    const envCheck = {
+      NODE_ENV: process.env.NODE_ENV,
+      MONGODB_URI: process.env.MONGODB_URI ? 'Set' : 'Not set',
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ? 'Set' : 'Not set',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'Set' : 'Not set',
+    };
     
-    // Try to count users
-    const userCount = await User.countDocuments();
-    console.log('🔍 Total users in database:', userCount);
+    console.log('🔍 Environment check:', envCheck);
     
-    // List all users
-    const users = await User.find({}).limit(5);
-    console.log('🔍 Sample users:', users.map(u => ({ id: u._id, clerkUserId: u.clerkUserId, email: u.email })));
+    // Test database connection
+    let dbStatus = 'Not tested';
+    let userCount = 0;
+    let sessionCount = 0;
     
-    return NextResponse.json({
-      success: true,
-      message: 'Database connection test successful',
-      userCount,
-      sampleUsers: users.map(u => ({
-        id: u._id,
-        clerkUserId: u.clerkUserId,
-        email: u.email,
-        name: u.name
-      }))
-    });
+    try {
+      await connectDB();
+      dbStatus = 'Connected';
+      
+      // Test basic operations
+      userCount = await User.countDocuments();
+      sessionCount = await Session.countDocuments();
+      
+      console.log('✅ Database test successful');
+    } catch (dbError) {
+      dbStatus = `Error: ${dbError.message}`;
+      console.error('❌ Database test failed:', dbError);
+    }
+    
+    const result = {
+      timestamp: new Date().toISOString(),
+      environment: envCheck,
+      database: {
+        status: dbStatus,
+        userCount,
+        sessionCount
+      },
+      message: 'Database test completed'
+    };
+    
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('❌ Database test failed:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+    console.error('❌ Test endpoint error:', error);
+    return NextResponse.json({ 
+      error: 'Test failed',
+      details: error.message 
     }, { status: 500 });
   }
 }

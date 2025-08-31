@@ -2,12 +2,22 @@ import { User } from '@/models/user';
 
 export async function getOrCreateUser(clerkUserId: string) {
   console.log('🔍 Looking for user with clerkUserId:', clerkUserId);
+  
+  if (!clerkUserId) {
+    throw new Error('clerkUserId is required');
+  }
+  
   let user = await User.findOne({ clerkUserId });
   console.log('🔍 User found in database:', user ? 'Yes' : 'No');
   
   if (!user) {
     console.log('🔍 User not found, creating new user...');
     try {
+      // Check if CLERK_SECRET_KEY is available
+      if (!process.env.CLERK_SECRET_KEY) {
+        throw new Error('CLERK_SECRET_KEY environment variable is not set');
+      }
+      
       // Get user info from Clerk
       console.log('🔍 Fetching user from Clerk API...');
       const clerkResponse = await fetch(`https://api.clerk.dev/v1/users/${clerkUserId}`, {
@@ -16,6 +26,8 @@ export async function getOrCreateUser(clerkUserId: string) {
           'Content-Type': 'application/json',
         },
       });
+      
+      console.log('🔍 Clerk API response status:', clerkResponse.status);
       
       if (clerkResponse.ok) {
         const clerkUser = await clerkResponse.json();
@@ -60,17 +72,70 @@ export async function getOrCreateUser(clerkUserId: string) {
         await user.save();
         console.log('✅ User created in database:', user._id);
       } else {
-        console.error('Failed to fetch user from Clerk:', await clerkResponse.text());
-        throw new Error('Failed to fetch user from Clerk');
+        const errorText = await clerkResponse.text();
+        console.error('❌ Failed to fetch user from Clerk:', {
+          status: clerkResponse.status,
+          statusText: clerkResponse.statusText,
+          error: errorText
+        });
+        
+        if (clerkResponse.status === 401) {
+          throw new Error('Invalid Clerk API key. Please check your CLERK_SECRET_KEY.');
+        }
+        
+        if (clerkResponse.status === 404) {
+          throw new Error('User not found in Clerk. Please check the clerkUserId.');
+        }
+        
+        throw new Error(`Clerk API error: ${clerkResponse.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
+      console.error('❌ Error creating user:', error);
+      
+      // Re-throw with more context
+      if (error.message.includes('CLERK_SECRET_KEY')) {
+        throw new Error('Clerk configuration error: ' + error.message);
+      }
+      
+      if (error.message.includes('Clerk API error')) {
+        throw new Error('Clerk API error: ' + error.message);
+      }
+      
+      throw new Error('Failed to create user: ' + error.message);
     }
   } else {
-    // Initialize gamification fields for existing users if they don't exist
+    // Check if existing user has missing required fields
     let needsUpdate = false;
     
+    // Check for missing firstName or lastName
+    if (!user.firstName || !user.lastName) {
+      console.log('🔍 User has missing firstName or lastName, fetching from Clerk...');
+      try {
+        // Fetch fresh data from Clerk
+        const clerkResponse = await fetch(`https://api.clerk.dev/v1/users/${clerkUserId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (clerkResponse.ok) {
+          const clerkUser = await clerkResponse.json();
+          user.firstName = clerkUser.first_name || user.firstName || '';
+          user.lastName = clerkUser.last_name || user.lastName || '';
+          needsUpdate = true;
+          console.log('✅ Updated user with Clerk data:', { firstName: user.firstName, lastName: user.lastName });
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch user data from Clerk for update:', error);
+        // Set default values if we can't fetch from Clerk
+        user.firstName = user.firstName || 'Unknown';
+        user.lastName = user.lastName || 'User';
+        needsUpdate = true;
+      }
+    }
+    
+    // Initialize gamification fields for existing users if they don't exist
     if (!user.points) {
       user.points = 0;
       needsUpdate = true;
@@ -114,8 +179,13 @@ export async function getOrCreateUser(clerkUserId: string) {
     }
     
     if (needsUpdate) {
-      await user.save();
-      console.log('🔍 Updated existing user with gamification fields');
+      try {
+        await user.save();
+        console.log('🔍 Updated existing user with missing fields');
+      } catch (updateError) {
+        console.error('❌ Error updating existing user:', updateError);
+        throw new Error('Failed to update existing user: ' + updateError.message);
+      }
     }
   }
   

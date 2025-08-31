@@ -11,7 +11,9 @@
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
     "db:seed": "node scripts/seed.js",
-    "db:migrate": "node scripts/migrate.js"
+    "db:migrate": "node scripts/migrate.js",
+    "check-env": "node scripts/check-env.js",
+    "fix-users": "node scripts/fix-users.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.5",
@@ -21,8 +23,8 @@
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-slot": "^1.0.2",
     "@tabler/icons-react": "^3.34.1",
-    "@tanstack/react-query": "^5.0.0",
-    "@tanstack/react-query-devtools": "^5.0.0",
+    "@tanstack/react-query": "^4.40.1",
+    "@tanstack/react-query-devtools": "^4.40.1",
     "aws-sdk": "^2.1500.0",
     "axios": "^1.6.0",
     "class-variance-authority": "^0.7.0",

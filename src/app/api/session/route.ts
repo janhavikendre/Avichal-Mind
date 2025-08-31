@@ -12,9 +12,13 @@ const createSessionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Starting session creation...');
+    console.log('🔍 Environment check - NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔍 Environment check - MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('🔍 Environment check - CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
+    
     const { userId } = await auth();
     console.log('🔍 Clerk userId in POST /api/session:', userId);
-    console.log('🔍 Environment check - MONGODB_URI exists:', !!process.env.MONGODB_URI);
     
     if (!userId) {
       console.log('❌ No userId from auth() - returning 401');
@@ -22,17 +26,54 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 Connecting to database...');
-    await connectDB();
-    console.log('✅ Database connected successfully');
+    try {
+      await connectDB();
+      console.log('✅ Database connected successfully');
+    } catch (dbError) {
+      console.error('❌ Database connection failed:', dbError);
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      }, { status: 500 });
+    }
 
     // Get or create user
     console.log('🔍 Getting or creating user with clerkUserId:', userId);
-    const user = await getOrCreateUser(userId);
-    console.log('✅ User found/created:', user ? user._id : 'null');
+    let user;
+    try {
+      user = await getOrCreateUser(userId);
+      console.log('✅ User found/created:', user ? user._id : 'null');
+    } catch (userError) {
+      console.error('❌ User creation/fetch failed:', userError);
+      return NextResponse.json({ 
+        error: 'User authentication failed',
+        details: process.env.NODE_ENV === 'development' ? userError.message : undefined
+      }, { status: 500 });
+    }
+
+    if (!user) {
+      console.log('❌ User is null after getOrCreateUser');
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     const body = await request.json();
-    const { mode, language } = createSessionSchema.parse(body);
+    console.log('🔍 Request body:', body);
+    
+    let validatedData;
+    try {
+      validatedData = createSessionSchema.parse(body);
+      console.log('✅ Request data validated:', validatedData);
+    } catch (validationError) {
+      console.error('❌ Request validation failed:', validationError);
+      return NextResponse.json({ 
+        error: 'Invalid request data',
+        details: process.env.NODE_ENV === 'development' ? validationError.message : undefined
+      }, { status: 400 });
+    }
 
+    const { mode, language } = validatedData;
+
+    console.log('🔍 Creating session with data:', { userId: user._id, mode, language });
     const session = new Session({
       userId: user._id,
       mode,
@@ -40,20 +81,51 @@ export async function POST(request: NextRequest) {
       startedAt: new Date(),
     });
 
-    await session.save();
+    try {
+      await session.save();
+      console.log('✅ Session saved successfully:', session._id);
+    } catch (saveError) {
+      console.error('❌ Session save failed:', saveError);
+      return NextResponse.json({ 
+        error: 'Failed to save session',
+        details: process.env.NODE_ENV === 'development' ? saveError.message : undefined
+      }, { status: 500 });
+    }
 
-    return NextResponse.json({
+    const response = {
       id: session._id,
       mode: session.mode,
       language: session.language,
       startedAt: session.startedAt,
-    });
+    };
+
+    console.log('✅ Session creation completed successfully:', response);
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Error creating session:', error);
+    console.error('❌ Unexpected error in session creation:', error);
+    console.error('❌ Error stack:', error.stack);
+    
+    // Check for specific error types
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
+      console.error('❌ Zod validation error:', error.errors);
+      return NextResponse.json({ 
+        error: 'Invalid request data',
+        details: process.env.NODE_ENV === 'development' ? error.errors : undefined
+      }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    
+    if (error.name === 'MongoError' || error.name === 'MongooseError') {
+      console.error('❌ MongoDB error:', error);
+      return NextResponse.json({ 
+        error: 'Database operation failed',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 
