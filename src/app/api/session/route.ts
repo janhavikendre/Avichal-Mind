@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Database connection failed:', dbError);
       return NextResponse.json({ 
         error: 'Database connection failed',
-        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? (dbError as Error).message : undefined
       }, { status: 500 });
     }
 
