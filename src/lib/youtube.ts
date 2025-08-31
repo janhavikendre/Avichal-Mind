@@ -82,7 +82,7 @@ export class YouTubeService {
   }
 
   private enhanceQuery(query: string): string {
-    // Add mental wellness and educational keywords to improve search results
+    // Only add wellness keywords if the query is actually about wellness topics
     const wellnessKeywords = [
       'mental health',
       'wellness',
@@ -103,22 +103,46 @@ export class YouTubeService {
 
     // Extract key topics from the query
     const queryLower = query.toLowerCase();
-    let enhancedQuery = query;
-
-    // Add relevant wellness keywords if not already present
-    const relevantKeywords = wellnessKeywords.filter(keyword => 
+    
+    // Check if the query already contains wellness-related content
+    const hasWellnessContent = wellnessKeywords.some(keyword => 
       queryLower.includes(keyword.split(' ')[0]) || 
       queryLower.includes(keyword.split(' ')[1])
     );
 
-    if (relevantKeywords.length > 0) {
-      enhancedQuery = `${query} ${relevantKeywords.slice(0, 2).join(' ')}`;
-    } else {
-      // Add general wellness context
-      enhancedQuery = `${query} mental wellness self care`;
+    // If the query already has wellness content, don't add more keywords
+    if (hasWellnessContent) {
+      return query;
     }
 
-    return enhancedQuery;
+    // Check if the query contains emotional/mental health indicators
+    const emotionalIndicators = [
+      'sad', 'depressed', 'anxious', 'worried', 'stressed', 'overwhelmed', 'lonely', 'hopeless',
+      'angry', 'frustrated', 'tired', 'exhausted', 'fear', 'panic', 'mood', 'emotion', 'feeling',
+      'cry', 'crying', 'tears', 'pain', 'hurt', 'suffering', 'help', 'support', 'advice'
+    ];
+
+    const hasEmotionalContent = emotionalIndicators.some(indicator => 
+      queryLower.includes(indicator)
+    );
+
+    // Only add wellness keywords if there's emotional content
+    if (hasEmotionalContent) {
+      const relevantKeywords = wellnessKeywords.filter(keyword => 
+        queryLower.includes(keyword.split(' ')[0]) || 
+        queryLower.includes(keyword.split(' ')[1])
+      );
+
+      if (relevantKeywords.length > 0) {
+        return `${query} ${relevantKeywords.slice(0, 2).join(' ')}`;
+      } else {
+        // Add minimal wellness context only for emotional content
+        return `${query} mental wellness`;
+      }
+    }
+
+    // For casual conversations, return the query as-is
+    return query;
   }
 
   async getRelevantVideos(conversationContext: string, language: 'en' | 'hi' | 'mr' = 'en'): Promise<any[]> {

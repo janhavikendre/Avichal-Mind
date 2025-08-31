@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/db';
 import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
 import { Message } from '@/models/message';
-import { geminiService } from '@/lib/gemini';
+import { AIService } from '@/services/ai';
 import { youtubeService } from '@/lib/youtube';
 import { gamificationService } from '@/lib/gamification';
 
@@ -38,8 +38,17 @@ export async function POST(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    // Check for crisis content using Gemini service
-    const hasCrisisContent = await geminiService.detectCrisisContent(content);
+    // Get conversation history for context
+    const conversationHistory = await Message.find({ sessionId: session._id })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .then(messages => messages.reverse().map(msg => ({
+        role: msg.role,
+        content: msg.contentText
+      })));
+
+    // Check for crisis content
+    const hasCrisisContent = await AIService.detectCrisisContent(content);
 
     if (hasCrisisContent) {
       // Update session with crisis flag
@@ -63,31 +72,22 @@ export async function POST(
     });
     await userMessage.save();
 
-    // Generate AI response using Gemini
-    const aiResponse = await geminiService.generateResponse(content, session.language);
+    // Generate AI response using the improved AI service
+    const aiResponse = await AIService.generateResponse(
+      content, 
+      session.language, 
+      user.firstName || 'User',
+      conversationHistory
+    );
     
-    // Get relevant video suggestions only for specific emotional/mental health topics
+    // Only get video suggestions if the AI service indicates it's appropriate
     let videoSuggestions: any[] = [];
-    let enhancedResponse = aiResponse;
+    let enhancedResponse = aiResponse.text;
     
-    try {
-      // Check if the conversation is about specific emotional/mental health topics
-      const emotionalKeywords = [
-        'stress', 'stressed', 'anxiety', 'depression', 'sad', 'lonely', 'bored', 'boredom',
-        'angry', 'frustrated', 'overwhelmed', 'tired', 'exhausted', 'worried', 'fear',
-        'panic', 'mood', 'emotion', 'feeling', 'mental health', 'therapy', 'counseling',
-        'meditation', 'relaxation', 'breathing', 'sleep', 'insomnia', 'grief', 'loss',
-        'relationship', 'family', 'work stress', 'burnout', 'self-care', 'wellness'
-      ];
-      
-      const hasEmotionalContent = emotionalKeywords.some(keyword => 
-        content.toLowerCase().includes(keyword) || aiResponse.toLowerCase().includes(keyword)
-      );
-      
-      // Only show videos for emotional/mental health topics
-      if (hasEmotionalContent) {
+    if (aiResponse.shouldSuggestVideos) {
+      try {
         // Create conversation context for video search
-        const conversationContext = `${content} ${aiResponse}`;
+        const conversationContext = `${content} ${aiResponse.text}`;
         videoSuggestions = await youtubeService.getRelevantVideos(conversationContext, session.language);
         
         // Enhance AI response to naturally mention the videos
@@ -98,12 +98,12 @@ export async function POST(
             ? `\n\nमी तुमच्यासाठी काही उपयुक्त व्हिडिओ शोधले आहेत जे तुमची मदत करू शकतात. खाली दिलेले व्हिडिओ बघा आणि थोडा वेळ विश्रांती घ्या.`
             : `\n\nI've also found some helpful videos that might be useful for you. Take a look at the videos below and take a breather.`;
           
-          enhancedResponse = aiResponse + videoMention;
+          enhancedResponse = aiResponse.text + videoMention;
         }
+      } catch (error) {
+        console.error('Error getting video suggestions:', error);
+        // Continue without video suggestions if there's an error
       }
-    } catch (error) {
-      console.error('Error getting video suggestions:', error);
-      // Continue without video suggestions if there's an error
     }
 
     // Save AI message
@@ -112,8 +112,8 @@ export async function POST(
       role: 'assistant',
       contentText: enhancedResponse,
       contentAudioUrl: null, // TODO: Add TTS
-      tokensIn: 0,
-      tokensOut: enhancedResponse.length,
+      tokensIn: aiResponse.tokensIn,
+      tokensOut: aiResponse.tokensOut,
       videoSuggestions: videoSuggestions,
     });
     await assistantMessage.save();
