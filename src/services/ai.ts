@@ -14,25 +14,27 @@ export interface AIResponse {
 }
 
 export class AIService {
-  private static systemPrompt = `You are a friendly, culturally aware wellness companion for Indian users. 
-You are NOT a doctor, therapist, or medical professional. You should avoid medical diagnosis and treatment recommendations.
+  private static systemPrompt = `You are a friendly, intelligent wellness companion for Indian users. Your primary role is to provide practical wellness support and emotional guidance.
 
-Your role is to:
-- Provide warm, conversational responses
-- Offer emotional support when needed
-- Suggest helpful resources only when relevant
+IMPORTANT GUIDELINES:
+- NEVER give generic responses like "I appreciate you opening up to me" or "What would be most helpful for you right now?"
+- ALWAYS provide specific, actionable advice and solutions
+- When users ask about stress, anxiety, depression, or wellness topics, give concrete coping strategies
+- If you can't provide specific help, suggest relevant wellness videos or resources
 - Be culturally sensitive to Indian users
-- Keep responses natural and contextual
+- Respond in the user's preferred language (English, Hindi, or Marathi)
 
-Guidelines:
-- Respond naturally to casual greetings and simple messages
-- Only provide wellness advice when the user shares specific concerns
-- Keep responses concise and conversational
-- Respond in the user's preferred language (English or Hindi)
-- If crisis content is detected, provide immediate crisis resources
-- Only suggest videos/resources when the user expresses specific needs or concerns
+For stress management questions:
+- Provide specific breathing exercises, meditation techniques, or lifestyle changes
+- Suggest practical time management or relaxation methods
+- Offer specific coping strategies they can try immediately
 
-Remember: Be a friendly companion first, wellness guide second.`;
+For wellness topics:
+- Give actionable advice and specific techniques
+- Provide step-by-step guidance when possible
+- Suggest relevant resources or activities
+
+Remember: Be specific, helpful, and provide real solutions. Never give generic responses.`;
 
   static async generateResponse(
     userMessage: string,
@@ -44,24 +46,32 @@ Remember: Be a friendly companion first, wellness guide second.`;
       // If Gemini is not available, use fallback responses
       if (!hasGeminiKey || !genAI) {
         console.warn('Gemini API key not available, using fallback responses');
-        return this.getFallbackResponse(userMessage, language);
+        return this.getFallbackResponse(userMessage, language, conversationHistory);
       }
 
-      // Analyze if this is a casual greeting or needs wellness support
-      const isCasualGreeting = this.isCasualGreeting(userMessage);
-      const needsWellnessSupport = this.needsWellnessSupport(userMessage, conversationHistory);
+      // Analyze message type and context
+      const messageAnalysis = this.analyzeMessage(userMessage, conversationHistory);
+      const totalMessages = conversationHistory.length + 1; // +1 for current message
       
-      const contextPrompt = isCasualGreeting 
-        ? "This appears to be a casual greeting. Respond warmly and naturally, as a friendly companion would."
-        : needsWellnessSupport
-        ? "The user seems to need emotional support or wellness guidance. Provide appropriate, compassionate help."
-        : "Respond naturally to the user's message. Keep it conversational and friendly.";
+      // Determine if we should suggest videos (after 8-10 messages with wellness content)
+      const shouldSuggestVideos = this.shouldSuggestVideos(messageAnalysis, totalMessages);
 
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
-      // Create the full prompt
+      // Create conversation context from history
+      let conversationContext = '';
+      if (conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-8); // Keep last 8 messages for context
+        conversationContext = '\n\nPrevious conversation:\n' + 
+          recentHistory.map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n');
+      }
+      
+      // Create intelligent prompt for real-time responses
+      const intelligentPrompt = this.createIntelligentPrompt(messageAnalysis, language, userName, userMessage);
+      
+      // Create the full prompt with conversation history
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
-      const fullPrompt = `${this.systemPrompt}\n\n${contextPrompt}\n\nRespond in ${languageText}. User's name: ${userName}\n\nUser message: ${userMessage}`;
+      const fullPrompt = `${this.systemPrompt}\n\n${intelligentPrompt}\n\nRespond in ${languageText}. User's name: ${userName}${conversationContext}\n\nCurrent user message: ${userMessage}\n\nProvide a natural, intelligent response:`;
 
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
@@ -72,25 +82,230 @@ Remember: Be a friendly companion first, wellness guide second.`;
       const estimatedTokensOut = text.length / 4;
 
       return {
-        text: text || this.getFallbackResponse(userMessage, language).text,
+        text: text || this.getFallbackResponse(userMessage, language, conversationHistory).text,
         tokensIn: estimatedTokensIn,
         tokensOut: estimatedTokensOut,
-        shouldSuggestVideos: needsWellnessSupport && !isCasualGreeting,
+        shouldSuggestVideos: shouldSuggestVideos,
       };
     } catch (error) {
       console.error('Error generating Gemini response:', error);
-      return this.getFallbackResponse(userMessage, language);
+      return this.getFallbackResponse(userMessage, language, conversationHistory);
     }
   }
 
-  private static getFallbackResponse(userMessage: string, language: 'en' | 'hi' | 'mr'): AIResponse {
-    // Analyze if this is a casual greeting or needs wellness support
-    const isCasualGreeting = this.isCasualGreeting(userMessage);
-    const needsWellnessSupport = this.needsWellnessSupport(userMessage, []);
+  private static analyzeMessage(userMessage: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): {
+    type: 'casual' | 'wellness' | 'general_question' | 'crisis' | 'general';
+    topics: string[];
+    emotionalTone: 'positive' | 'negative' | 'neutral';
+    needsSupport: boolean;
+    isQuestion: boolean;
+  } {
+    const lowerMessage = userMessage.toLowerCase();
     
-    // More dynamic fallback responses based on message content
+    // Check for crisis content first
+    if (this.detectCrisisKeywords(userMessage)) {
+      return {
+        type: 'crisis',
+        topics: ['crisis', 'emergency'],
+        emotionalTone: 'negative',
+        needsSupport: true,
+        isQuestion: false
+      };
+    }
+
+    // Check if it's a general question
+    const isQuestion = this.isQuestion(userMessage);
+    const isGeneralQuestion = this.isGeneralQuestion(userMessage);
+    
+    if (isGeneralQuestion) {
+      return {
+        type: 'general_question',
+        topics: ['general_knowledge'],
+        emotionalTone: 'neutral',
+        needsSupport: false,
+        isQuestion: true
+      };
+    }
+
+    // Check for casual greetings
+    if (this.isCasualGreeting(userMessage)) {
+      return {
+        type: 'casual',
+        topics: ['greeting'],
+        emotionalTone: 'neutral',
+        needsSupport: false,
+        isQuestion: isQuestion
+      };
+    }
+
+    // Analyze wellness topics
+    const wellnessTopics = this.detectWellnessTopics(userMessage);
+    const emotionalTone = this.detectEmotionalTone(userMessage);
+    const needsSupport = this.needsWellnessSupport(userMessage, conversationHistory);
+
+    return {
+      type: needsSupport ? 'wellness' : 'general',
+      topics: wellnessTopics,
+      emotionalTone,
+      needsSupport,
+      isQuestion: isQuestion
+    };
+  }
+
+  private static isQuestion(message: string): boolean {
+    const questionIndicators = [
+      '?', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'can you', 'could you',
+      'क्या', 'कैसे', 'क्यों', 'कब', 'कहाँ', 'कौन', 'कौन सा', 'क्या आप', 'क्या तुम',
+      'काय', 'कसे', 'का', 'कधी', 'कुठे', 'कोण', 'कोणता', 'काय तुम्ही', 'काय तू'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return questionIndicators.some(indicator => lowerMessage.includes(indicator));
+  }
+
+  private static isGeneralQuestion(message: string): boolean {
+    const generalQuestionKeywords = [
+      'alphabet', 'alphabets', 'letters', 'numbers', 'count', 'how many',
+      'capital', 'country', 'city', 'population', 'area', 'distance',
+      'weather', 'temperature', 'time', 'date', 'year', 'month',
+      'color', 'colors', 'shape', 'size', 'weight', 'height',
+      'food', 'recipe', 'cooking', 'ingredient', 'nutrition',
+      'animal', 'plant', 'species', 'scientific', 'biology',
+      'math', 'mathematics', 'calculation', 'equation', 'formula',
+      'history', 'historical', 'event', 'war', 'battle',
+      'geography', 'map', 'location', 'continent', 'ocean',
+      'technology', 'computer', 'software', 'programming', 'code',
+      'sports', 'game', 'player', 'team', 'score', 'match',
+      'music', 'song', 'artist', 'album', 'genre', 'instrument',
+      'movie', 'film', 'actor', 'director', 'genre', 'plot',
+      'book', 'author', 'novel', 'story', 'character', 'plot',
+      'वर्णमाला', 'अक्षर', 'संख्या', 'गणना', 'कितने',
+      'राजधानी', 'देश', 'शहर', 'जनसंख्या', 'क्षेत्र', 'दूरी',
+      'मौसम', 'तापमान', 'समय', 'तारीख', 'साल', 'महीना',
+      'रंग', 'आकार', 'आकार', 'वजन', 'ऊंचाई',
+      'भोजन', 'पकाने', 'सामग्री', 'पोषण',
+      'जानवर', 'पौधा', 'प्रजाति', 'वैज्ञानिक', 'जीव विज्ञान',
+      'गणित', 'गणना', 'समीकरण', 'सूत्र',
+      'इतिहास', 'ऐतिहासिक', 'घटना', 'युद्ध', 'लड़ाई',
+      'भूगोल', 'नक्शा', 'स्थान', 'महाद्वीप', 'समुद्र',
+      'तकनीक', 'कंप्यूटर', 'सॉफ्टवेयर', 'प्रोग्रामिंग', 'कोड',
+      'खेल', 'खिलाड़ी', 'टीम', 'स्कोर', 'मैच',
+      'संगीत', 'गीत', 'कलाकार', 'एल्बम', 'शैली', 'वाद्य',
+      'फिल्म', 'अभिनेता', 'निर्देशक', 'शैली', 'कहानी',
+      'किताब', 'लेखक', 'उपन्यास', 'कहानी', 'पात्र', 'कथानक'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return generalQuestionKeywords.some(keyword => lowerMessage.includes(keyword));
+  }
+
+  private static detectWellnessTopics(message: string): string[] {
+    const lowerMessage = message.toLowerCase();
+    const topics: string[] = [];
+
+    const topicKeywords = {
+      anxiety: ['anxiety', 'worry', 'stress', 'nervous', 'panic', 'fear', 'overwhelmed', 'tense'],
+      depression: ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable'],
+      relationships: ['relationship', 'partner', 'family', 'friend', 'love', 'marriage', 'dating', 'breakup'],
+      work: ['work', 'job', 'career', 'professional', 'office', 'boss', 'colleague', 'workplace'],
+      sleep: ['sleep', 'insomnia', 'rest', 'tired', 'exhausted', 'bed', 'night', 'dream'],
+      mindfulness: ['mindfulness', 'meditation', 'breathing', 'calm', 'peace', 'zen', 'yoga', 'relaxation'],
+      self_care: ['self care', 'self-care', 'wellness', 'health', 'care', 'healing', 'recovery'],
+      emotions: ['emotion', 'feeling', 'mood', 'happy', 'sad', 'angry', 'frustrated', 'joy'],
+      grief: ['grief', 'loss', 'death', 'mourning', 'bereavement', 'missing', 'gone'],
+      confidence: ['confidence', 'self-esteem', 'worth', 'value', 'believe', 'capable', 'strong']
+    };
+
+    Object.entries(topicKeywords).forEach(([topic, keywords]) => {
+      if (keywords.some(keyword => lowerMessage.includes(keyword))) {
+        topics.push(topic);
+      }
+    });
+
+    return topics;
+  }
+
+  private static detectEmotionalTone(message: string): 'positive' | 'negative' | 'neutral' {
+    const lowerMessage = message.toLowerCase();
+    
+    const positiveWords = ['happy', 'good', 'great', 'wonderful', 'excellent', 'amazing', 'fantastic', 'joy', 'excited', 'thrilled', 'content', 'satisfied', 'peaceful', 'calm', 'relaxed', 'grateful', 'thankful', 'blessed', 'lucky', 'fortunate'];
+    const negativeWords = ['sad', 'bad', 'terrible', 'awful', 'horrible', 'depressed', 'anxious', 'worried', 'stressed', 'angry', 'frustrated', 'upset', 'disappointed', 'hurt', 'pain', 'suffering', 'lonely', 'hopeless', 'desperate', 'miserable'];
+
+    const positiveCount = positiveWords.filter(word => lowerMessage.includes(word)).length;
+    const negativeCount = negativeWords.filter(word => lowerMessage.includes(word)).length;
+
+    if (positiveCount > negativeCount) return 'positive';
+    if (negativeCount > positiveCount) return 'negative';
+    return 'neutral';
+  }
+
+  private static shouldSuggestVideos(analysis: any, totalMessages: number): boolean {
+    // Suggest videos if:
+    // 1. It's a wellness-related conversation (especially stress management)
+    // 2. We have 3+ messages (more aggressive for stress topics)
+    // 3. User needs support
+    const isStressTopic = analysis.topics.includes('anxiety') || 
+                         analysis.topics.includes('work') || 
+                         analysis.topics.includes('self_care');
+    
+    return analysis.type === 'wellness' && 
+           analysis.needsSupport && 
+           totalMessages >= 3 && 
+           totalMessages <= 20; // Suggest within this range
+  }
+
+  private static createIntelligentPrompt(analysis: any, language: 'en' | 'hi' | 'mr', userName: string, userMessage: string): string {
+    const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
+    
+    switch (analysis.type) {
+      case 'crisis':
+        return `CRISIS DETECTED: The user may be in crisis. Provide immediate crisis resources and support. Be compassionate but direct about getting professional help. Respond in ${languageText}.`;
+      
+      case 'general_question':
+        return `The user is asking a general knowledge question. Provide an accurate, helpful, and engaging answer. Be conversational and informative. Respond in ${languageText}.`;
+      
+      case 'casual':
+        return `This is a casual conversation. Respond naturally and engagingly. If it's a greeting, respond warmly. If it's a question about how you are, respond naturally. Keep it friendly and conversational. Respond in ${languageText}.`;
+      
+             case 'wellness':
+         const topicContext = analysis.topics.length > 0 ? 
+           `Focus on: ${analysis.topics.join(', ')}. ` : '';
+         const toneContext = analysis.emotionalTone === 'negative' ? 
+           'The user seems to be struggling emotionally. Provide compassionate support and understanding. ' : '';
+         return `${topicContext}${toneContext}This is a wellness-related conversation. Provide SPECIFIC, ACTIONABLE advice and coping strategies. Give concrete techniques they can try immediately. If they ask about stress management, provide breathing exercises, meditation techniques, or lifestyle changes. Be specific and helpful. Respond in ${languageText}.`;
+      
+      default:
+        return `Respond naturally to the user's message. Keep it conversational and friendly while maintaining context. Respond in ${languageText}.`;
+    }
+  }
+
+  private static getFallbackResponse(
+    userMessage: string, 
+    language: 'en' | 'hi' | 'mr',
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  ): AIResponse {
+    const analysis = this.analyzeMessage(userMessage, conversationHistory);
+    const totalMessages = conversationHistory.length + 1;
+    const shouldSuggestVideos = this.shouldSuggestVideos(analysis, totalMessages);
+    
+    // Check if this is a follow-up message in an ongoing conversation
+    const isFollowUp = conversationHistory.length > 0;
+    
+    // Get context-aware fallback responses
     const fallbackResponses: Record<string, Record<string, string[]>> = {
       en: {
+        crisis: [
+          "I'm concerned about what you're sharing. Please know that you're not alone, and there are people who want to help. Consider reaching out to a crisis helpline or mental health professional immediately. Your life has value, and there is hope.",
+          "What you're experiencing sounds very serious. I want you to know that help is available 24/7. Please contact a crisis helpline or speak with a mental health professional right away. You deserve support and care.",
+          "I hear that you're in a very difficult place right now. Please reach out for immediate help - call a crisis helpline or speak with a mental health professional. You don't have to face this alone."
+        ],
+        general_question: [
+          "I'd be happy to help with that! Let me provide you with accurate information.",
+          "That's a great question! Here's what I know about that topic.",
+          "I can help you with that! Let me share some helpful information.",
+          "That's an interesting question! Here's what I can tell you about that.",
+          "I'd love to help you with that! Let me provide you with some useful information."
+        ],
         casual: [
           "Hello! How are you doing today?",
           "Hi there! Nice to chat with you.",
@@ -99,22 +314,55 @@ Remember: Be a friendly companion first, wellness guide second.`;
           "Hi! I'm here to listen and support you.",
           "Hello! How can I help you today?",
         ],
-        wellness: [
-          "I hear you, and I want you to know that your feelings are valid. Let's take a moment to breathe together - inhale for 4 counts, hold for 4, exhale for 6. This simple practice can help ground you in the present moment.",
-          "Thank you for sharing that with me. It's completely normal to feel this way. Consider talking to someone you trust, or if these feelings persist, reaching out to a mental health professional could be very helpful.",
-          "I understand this is difficult. Remember, you don't have to face this alone. There are people who care and want to help. Would you like to explore some coping strategies together?",
-          "Your feelings matter, and it's okay to not be okay. Let's work through this together. What would be most helpful for you right now?",
-          "I appreciate you opening up to me. What would be most helpful for you right now?",
+        casual_followup: [
+          "Hi again! How are things going?",
+          "Hello! Nice to hear from you again.",
+          "Hey! How has your day been since we last talked?",
+          "Hi! What's new with you?",
+          "Hello! How are you feeling today?",
         ],
+                 wellness: [
+           "For stress management, try this 4-7-8 breathing technique: Inhale for 4 counts, hold for 7, exhale for 8. Repeat 5 times. This activates your parasympathetic nervous system and helps you relax immediately.",
+           "When feeling overwhelmed, try the 5-4-3-2-1 grounding technique: Name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste. This brings you back to the present moment.",
+           "For stress relief, try progressive muscle relaxation: Tense each muscle group for 5 seconds, then release. Start from your toes and work up to your head. This releases physical tension.",
+           "Take a 10-minute break to practice mindfulness: Sit comfortably, focus on your breath, and when thoughts come, gently return to breathing. This helps clear your mind.",
+           "Try the 20-20-20 rule for eye strain: Every 20 minutes, look at something 20 feet away for 20 seconds. This reduces digital eye strain and mental fatigue."
+         ],
+                 wellness_followup: [
+           "How did the breathing technique work for you? If you need more stress relief, try this quick exercise: Stand up, stretch your arms overhead, take 3 deep breaths, then shake out your hands and arms.",
+           "Since we last talked, have you tried any of the relaxation techniques? Here's another quick one: Close your eyes, imagine a peaceful place, and take 5 slow, deep breaths.",
+           "I'm here to support you. Try this 2-minute stress buster: Sit straight, place one hand on your chest, one on your belly, and breathe so only your belly hand moves.",
+           "How are you feeling now? If still stressed, try this: Tense your shoulders for 5 seconds, then let them drop completely. Repeat 3 times.",
+           "Let's try something different: Take a 5-minute walk, even just around your room, while focusing on your breathing. Movement helps release stress hormones."
+         ],
         general: [
           "I'm here to listen and support you. What would you like to talk about?",
           "Thank you for reaching out. How can I help you today?",
           "I'm here for you. What's on your mind?",
           "I'm listening. Tell me more about what you're going through.",
           "I'm here to support you. What would you like to discuss?",
+        ],
+        general_followup: [
+          "I'm here to continue our conversation. What would you like to talk about?",
+          "Thank you for reaching out again. How can I help you today?",
+          "I'm here for you. What's on your mind since we last talked?",
+          "I'm listening. Tell me more about what you're going through.",
+          "I'm here to support you. What would you like to discuss?",
         ]
       },
       hi: {
+        crisis: [
+          "मैं आपकी बात सुनकर चिंतित हूं। कृपया जानें कि आप अकेले नहीं हैं और ऐसे लोग हैं जो मदद करना चाहते हैं। कृपया तुरंत किसी संकट हेल्पलाइन या मानसिक स्वास्थ्य पेशेवर से संपर्क करें। आपकी जिंदगी की कीमत है और आशा है।",
+          "आप जो अनुभव कर रहे हैं वह बहुत गंभीर लगता है। मैं चाहता हूं कि आप जानें कि मदद 24/7 उपलब्ध है। कृपया तुरंत किसी संकट हेल्पलाइन से संपर्क करें या मानसिक स्वास्थ्य पेशेवर से बात करें।",
+          "मैं सुन रहा हूं कि आप अभी बहुत मुश्किल समय से गुजर रहे हैं। कृपया तुरंत मदद के लिए पहुंचें - किसी संकट हेल्पलाइन को कॉल करें या मानसिक स्वास्थ्य पेशेवर से बात करें।"
+        ],
+        general_question: [
+          "मैं आपकी मदद करने में खुशी महसूस करूंगा! मैं आपको सटीक जानकारी प्रदान करता हूं।",
+          "यह एक बहुत अच्छा सवाल है! मुझे उस विषय के बारे में जो पता है वह यहां है।",
+          "मैं आपकी मदद कर सकता हूं! मैं आपके साथ कुछ उपयोगी जानकारी साझा करता हूं।",
+          "यह एक दिलचस्प सवाल है! मैं आपको उसके बारे में जो बता सकता हूं वह यहां है।",
+          "मैं आपकी मदद करने में खुशी महसूस करूंगा! मैं आपको कुछ उपयोगी जानकारी प्रदान करता हूं।"
+        ],
         casual: [
           "नमस्ते! आज आप कैसे हैं?",
           "हाय! आपसे बात करके अच्छा लगा।",
@@ -123,12 +371,26 @@ Remember: Be a friendly companion first, wellness guide second.`;
           "हाय! मैं आपकी बात सुनने और आपका समर्थन करने के लिए यहां हूं।",
           "नमस्ते! आज मैं आपकी कशी मदद कर सकता हूं?",
         ],
-        wellness: [
-          "मैं आपकी बात सुन रहा हूं और लगता है कि आप एक कठिन समय से गुजर रहे हैं। चलिए एक साथ सांस लेते हैं - 4 गिनती तक सांस अंदर लें, 4 तक रोकें, 6 तक छोड़ें। यह सरल अभ्यास आपको वर्तमान क्षण में जमीन पर लाने में मदद कर सकता है।",
-          "मुझे यह बताने के लिए धन्यवाद। इस तरह महसूस करना पूरी तरह सामान्य है। किसी भरोसेमंद व्यक्ति से बात करने पर विचार करें, या अगर ये भावनाएं बनी रहती हैं, तो मानसिक स्वास्थ्य पेशेवर से संपर्क करना बहुत मददगार हो सकता है।",
-          "मैं समझता हूं कि यह मुश्किल है। याद रखें, आपको इसका सामना अकेले नहीं करना है। ऐसे लोग हैं जो परवाह करते हैं और मदद करना चाहते हैं। क्या आप कुछ सामना करने की रणनीतियों का पता लगाना चाहेंगे?",
-          "आपकी भावनाएं महत्वपूर्ण हैं, और बरे नसणेही ठीक आहे. चला हे एकत्र सोडवू. आता तुमच्यासाठी सर्वात उपयुक्त काय असेल?",
-          "मला हे सांगण्याबद्दल धन्यवाद. आता तुमच्यासाठी सर्वात उपयुक्त काय असेल?",
+        casual_followup: [
+          "फिर से नमस्ते! कैसे हैं आप?",
+          "हाय! आपसे फिर बात करके अच्छा लगा।",
+          "हेलो! पिछली बार से आपका दिन कैसा जा रहा है?",
+          "नमस्ते! क्या नया है आपके साथ?",
+          "हाय! आज आप कैसा महसूस कर रहे हैं?",
+        ],
+                 wellness: [
+           "तनाव प्रबंधन के लिए, यह 4-7-8 श्वास तकनीक आज़माएं: 4 गिनती तक सांस अंदर लें, 7 तक रोकें, 8 तक छोड़ें। 5 बार दोहराएं। यह आपके पैरासिम्पेथेटिक नर्वस सिस्टम को सक्रिय करता है और तुरंत आराम देता है।",
+           "जब अभिभूत महसूस करें, 5-4-3-2-1 ग्राउंडिंग तकनीक आज़माएं: 5 चीज़ें जो आप देखते हैं, 4 जो छू सकते हैं, 3 जो सुनते हैं, 2 जो सूंघते हैं, 1 जो चखते हैं। यह आपको वर्तमान क्षण में वापस लाता है।",
+           "तनाव से राहत के लिए, प्रोग्रेसिव मसल रिलैक्सेशन आज़माएं: हर मांसपेशी समूह को 5 सेकंड तक तनाव दें, फिर छोड़ें। पैर की उंगलियों से शुरू करके सिर तक जाएं। यह शारीरिक तनाव मुक्त करता है।",
+           "10 मिनट का ब्रेक लें और माइंडफुलनेस का अभ्यास करें: आराम से बैठें, अपनी सांस पर ध्यान केंद्रित करें, और जब विचार आएं, तो धीरे से सांस लेने पर वापस आएं। यह दिमाग साफ करने में मदद करता है।",
+           "आंखों के तनाव के लिए 20-20-20 नियम आज़माएं: हर 20 मिनट में, 20 फीट दूर किसी चीज़ को 20 सेकंड तक देखें। यह डिजिटल आंखों के तनाव और मानसिक थकान को कम करता है।"
+         ],
+        wellness_followup: [
+          "मुझे याद है कि तुम्ही आधीही असं वाटत होता. आता तुम्ही याचा सामना कसा करत आहात?",
+          "मला हे सांगत राहण्याबद्दल धन्यवाद. मागच्या वेळेपासून गोष्टी कशा आहेत?",
+          "मी तुमचे समर्थन करण्यासाठी येथे आहे. मागच्या संवादानंतर तुमच्या मनात काय आहे?",
+          "मी तुमच्यावर विश्वास ठेवल्याबद्दल आभारी आहे. आता परिस्थितीबद्दल तुम्हाला कसे वाटत आहे?",
+          "मी ऐकत आहे आणि तुमच्यासाठी येथे आहे. आता सर्वात उपयुक्त काय असेल?",
         ],
         general: [
           "मैं आपकी बात सुनने और आपका समर्थन करने के लिए यहां हूं। आप क्या बात करना चाहते हैं?",
@@ -136,9 +398,28 @@ Remember: Be a friendly companion first, wellness guide second.`;
           "मी आपके लिए येथे आहे. आपके मनात काय आहे?",
           "मी ऐकत आहे. मला सांगा की तुम्ही काय अनुभवत आहात.",
           "मी तुमचे समर्थन करण्यासाठी येथे आहे. तुम्हाला काय चर्चा करायचे आहे?",
+        ],
+        general_followup: [
+          "मी आमचा संवाद सुरू ठेवण्यासाठी येथे आहे. तुम्हाला काय बोलायचे आहे?",
+          "पुन्हा संपर्क करने के लिए धन्यवाद. आज मैं आपकी कशी मदत कर सकता हूं?",
+          "मी तुमच्यासाठी येथे आहे. मागच्या वेळेपासून तुमच्या मनात काय आहे?",
+          "मी ऐकत आहे. मला सांगा की तुम्ही काय अनुभवत आहात.",
+          "मी तुमचे समर्थन करण्यासाठी येथे आहे. तुम्हाला काय चर्चा करायचे आहे?",
         ]
       },
       mr: {
+        crisis: [
+          "मी तुमचे ऐकत आहे आणि चिंतित आहे. कृपया जाणून घ्या की तुम्ही एकटे नाही आहात आणि असे लोक आहेत जे मदत करू इच्छितात. कृपया त्वरित कोणत्याही संकट हेल्पलाइन किंवा मानसिक आरोग्य व्यावसायिकांशी संपर्क साधा. तुमच्या जीवनाला मूल्य आहे आणि आशा आहे.",
+          "तुम्ही जे अनुभवत आहात ते खूप गंभीर वाटते. मी तुम्हाला सांगायचे आहे की मदत 24/7 उपलब्ध आहे. कृपया त्वरित कोणत्याही संकट हेल्पलाइनशी संपर्क साधा किंवा मानसिक आरोग्य व्यावसायिकांशी बोला.",
+          "मी ऐकत आहे की तुम्ही आता खूप कठीण काळातून जात आहात. कृपया त्वरित मदतीसाठी पोहोचा - कोणत्याही संकट हेल्पलाइनला कॉल करा किंवा मानसिक आरोग्य व्यावसायिकांशी बोला."
+        ],
+        general_question: [
+          "मी तुमची मदत करण्यात आनंदी असेन! मी तुम्हाला अचूक माहिती प्रदान करतो.",
+          "तो एक चांगला प्रश्न आहे! मला त्या विषयाबद्दल जे माहित आहे ते येथे आहे.",
+          "मी तुमची मदत करू शकतो! मी तुमच्यासोबत काही उपयुक्त माहिती सामायिक करतो.",
+          "तो एक मनोरंजक प्रश्न आहे! मी तुम्हाला त्याबद्दल जे सांगू शकतो ते येथे आहे.",
+          "मी तुमची मदत करण्यात आनंदी असेन! मी तुम्हाला काही उपयुक्त माहिती प्रदान करतो."
+        ],
         casual: [
           "नमस्कार! आज तुम्हाला कसे वाटत आहे?",
           "हाय! तुमच्याशी बोलून छान वाटले.",
@@ -147,12 +428,26 @@ Remember: Be a friendly companion first, wellness guide second.`;
           "हाय! मी तुमचे ऐकण्यासाठी आणि तुमचे समर्थन करण्यासाठी येथे आहे.",
           "नमस्कार! आज मी तुमची कशी मदत करू शकतो?",
         ],
-        wellness: [
-          "मी तुमचे ऐकत आहे आणि तुम्हाला सांगायचे आहे की तुमच्या भावना योग्य आहेत. चला एकत्र श्वास घेऊ - 4 मोजणीपर्यंत श्वास घ्या, 4 पर्यंत धरा, 6 पर्यंत सोडा. हा सोपा सराव तुम्हाला वर्तमान क्षणात जमिनीवर आणण्यास मदत करू शकतो.",
-          "मला हे सांगण्याबद्दल धन्यवाद. अशा प्रकारे वाटणे पूर्णपणे सामान्य आहे. तुमच्या विश्वासातील एखाद्याशी बोलण्याचा विचार करा, किंवा जर हे भावना टिकून राहत असतील तर मानसिक आरोग्य व्यावसायिकांशी संपर्क साधणे खूप उपयुक्त ठरू शकते.",
-          "मी समजतो की हे कठीण आहे. लक्षात ठेवा, तुम्हाला याचा सामना एकट्याने करण्याची गरज नाही. असे लोक आहेत जे काळजी घेतात आणि मदत करू इच्छितात. तुम्हाला काही सामना करण्याच्या रणनीती एकत्र शोधायच्या आहेत का?",
-          "तुमच्या भावना महत्त्वाच्या आहेत, आणि बरे नसणेही ठीक आहे. चला हे एकत्र सोडवू. आता तुमच्यासाठी सर्वात उपयुक्त काय असेल?",
-          "मला हे सांगण्याबद्दल धन्यवाद. आता तुमच्यासाठी सर्वात उपयुक्त काय असेल?",
+        casual_followup: [
+          "पुन्हा नमस्कार! तुम्हाला कसे वाटत आहे?",
+          "हाय! तुमच्याशी पुन्हा बोलून छान वाटले.",
+          "हेलो! मागच्या वेळेपासून तुमचा दिवस कसा जात आहे?",
+          "नमस्कार! तुमच्याबद्दल काय नवीन आहे?",
+          "हाय! आज तुम्हाला कसे वाटत आहे?",
+        ],
+                 wellness: [
+           "तणाव व्यवस्थापनासाठी, ही 4-7-8 श्वास तंत्र वापरा: 4 मोजणीपर्यंत श्वास घ्या, 7 पर्यंत धरा, 8 पर्यंत सोडा. 5 वेळा पुन्हा करा. हे तुमच्या पॅरासिम्पॅथेटिक नर्व्हस सिस्टमला सक्रिय करते आणि त्वरित आराम देते.",
+           "जेव्हा अधिक भार वाटत असेल, 5-4-3-2-1 ग्राउंडिंग तंत्र वापरा: 5 गोष्टी ज्या तुम्ही पाहता, 4 ज्या स्पर्श करू शकता, 3 ज्या ऐकता, 2 ज्या वास घेता, 1 जी चव घेता. हे तुम्हाला वर्तमान क्षणात परत आणते.",
+           "तणाव सुटण्यासाठी, प्रोग्रेसिव्ह मसल रिलॅक्सेशन वापरा: प्रत्येक स्नायू गटाला 5 सेकंद ताण द्या, नंतर सोडा. पायाच्या बोटांपासून डोक्यापर्यंत जा. हे शारीरिक तणाव मुक्त करते.",
+           "10 मिनिटांचा ब्रेक घ्या आणि माइंडफुलनेस सराव करा: आरामात बसा, तुमच्या श्वासावर लक्ष केंद्रित करा, आणि जेव्हा विचार येतात, तेव्हा हळूवारपणे श्वास घेण्याकडे परत जा. हे मन साफ करण्यास मदत करते.",
+           "डोळ्यांच्या तणावासाठी 20-20-20 नियम वापरा: दर 20 मिनिटांनी, 20 फूट दूर असलेल्या एखाद्या गोष्टीकडे 20 सेकंद पहा. हे डिजिटल डोळ्यांचा तणाव आणि मानसिक थकवा कमी करते."
+         ],
+        wellness_followup: [
+          "मला आठवतं की तुम्ही आधीही असं वाटत होता. आता तुम्ही याचा सामना कसा करत आहात?",
+          "मला हे सांगत राहण्याबद्दल धन्यवाद. मागच्या वेळेपासून गोष्टी कशा आहेत?",
+          "मी तुमचे समर्थन करण्यासाठी येथे आहे. मागच्या संवादानंतर तुमच्या मनात काय आहे?",
+          "मी तुमच्यावर विश्वास ठेवल्याबद्दल आभारी आहे. आता परिस्थितीबद्दल तुम्हाला कसे वाटत आहे?",
+          "मी ऐकत आहे आणि तुमच्यासाठी येथे आहे. आता सर्वात उपयुक्त काय असेल?",
         ],
         general: [
           "मी तुमचे ऐकण्यासाठी आणि तुमचे समर्थन करण्यासाठी येथे आहे. तुम्हाला काय बोलायचे आहे?",
@@ -160,15 +455,24 @@ Remember: Be a friendly companion first, wellness guide second.`;
           "मी तुमच्यासाठी येथे आहे. तुमच्या मनात काय आहे?",
           "मी ऐकत आहे. मला सांगा की तुम्ही काय अनुभवत आहात.",
           "मी तुमचे समर्थन करण्यासाठी येथे आहे. तुम्हाला काय चर्चा करायचे आहे?",
+        ],
+        general_followup: [
+          "मी आमचा संवाद सुरू ठेवण्यासाठी येथे आहे. तुम्हाला काय बोलायचे आहे?",
+          "पुन्हा संपर्क साधल्याबद्दल धन्यवाद. आज मी तुमची कशी मदत करू शकतो?",
+          "मी तुमच्यासाठी येथे आहे. मागच्या वेळेपासून तुमच्या मनात काय आहे?",
+          "मी ऐकत आहे. मला सांगा की तुम्ही काय अनुभवत आहात.",
+          "मी तुमचे समर्थन करण्यासाठी येथे आहे. तुम्हाला काय चर्चा करायचे आहे?",
         ]
       }
     };
 
-    let responseType = 'general';
-    if (isCasualGreeting) {
-      responseType = 'casual';
-    } else if (needsWellnessSupport) {
-      responseType = 'wellness';
+    let responseType = analysis.type;
+    if (analysis.type === 'casual' && isFollowUp) {
+      responseType = analysis.type;
+    } else if (analysis.type === 'wellness' && isFollowUp) {
+      responseType = analysis.type;
+    } else if (analysis.type === 'general' && isFollowUp) {
+      responseType = analysis.type;
     }
 
     // Use message content to add some variety to responses
@@ -198,7 +502,7 @@ Remember: Be a friendly companion first, wellness guide second.`;
       text: selectedResponse,
       tokensIn: userMessage.length / 4,
       tokensOut: selectedResponse.length / 4,
-      shouldSuggestVideos: needsWellnessSupport && !isCasualGreeting,
+      shouldSuggestVideos: shouldSuggestVideos,
     };
   }
 
