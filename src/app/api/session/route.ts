@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ User creation/fetch failed:', userError);
       return NextResponse.json({ 
         error: 'User authentication failed',
-        details: process.env.NODE_ENV === 'development' ? userError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? (userError as Error).message : undefined
       }, { status: 500 });
     }
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Request validation failed:', validationError);
       return NextResponse.json({ 
         error: 'Invalid request data',
-        details: process.env.NODE_ENV === 'development' ? validationError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? (validationError as Error).message : undefined
       }, { status: 400 });
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Session save failed:', saveError);
       return NextResponse.json({ 
         error: 'Failed to save session',
-        details: process.env.NODE_ENV === 'development' ? saveError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? (saveError as Error).message : undefined
       }, { status: 500 });
     }
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error('❌ Unexpected error in session creation:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error stack:', (error as Error).stack);
     
     // Check for specific error types
     if (error instanceof z.ZodError) {
@@ -114,17 +114,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    if (error.name === 'MongoError' || error.name === 'MongooseError') {
+    if ((error as any).name === 'MongoError' || (error as any).name === 'MongooseError') {
       console.error('❌ MongoDB error:', error);
       return NextResponse.json({ 
         error: 'Database operation failed',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
       }, { status: 500 });
     }
     
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
