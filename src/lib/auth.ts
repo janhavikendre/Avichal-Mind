@@ -93,15 +93,18 @@ export async function getOrCreateUser(clerkUserId: string) {
       console.error('❌ Error creating user:', error);
       
       // Re-throw with more context
-      if (error.message.includes('CLERK_SECRET_KEY')) {
+      if (error instanceof Error && error.message.includes('CLERK_SECRET_KEY')) {
         throw new Error('Clerk configuration error: ' + error.message);
       }
       
-      if (error.message.includes('Clerk API error')) {
+      if (error instanceof Error && error.message.includes('Clerk API error')) {
         throw new Error('Clerk API error: ' + error.message);
       }
       
-      throw new Error('Failed to create user: ' + error.message);
+      if (error instanceof Error) {
+        throw new Error('Failed to create user: ' + error.message);
+      }
+      throw new Error('Failed to create user');
     }
   } else {
     // Check if existing user has missing required fields
@@ -182,12 +185,14 @@ export async function getOrCreateUser(clerkUserId: string) {
       try {
         await user.save();
         console.log('🔍 Updated existing user with missing fields');
-      } catch (updateError) {
+      } catch (updateError: unknown) {
         console.error('❌ Error updating existing user:', updateError);
-        throw new Error('Failed to update existing user: ' + updateError.message);
+        if (updateError instanceof Error) {
+          throw new Error('Failed to update existing user: ' + updateError.message);
+        }
+        throw new Error('Failed to update existing user');
       }
     }
   }
-  
   return user;
 }

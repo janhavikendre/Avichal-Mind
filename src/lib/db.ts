@@ -43,33 +43,37 @@ async function connectDB() {
     console.log('🔍 Port:', db.connection.port);
     
     // Test the connection
-    await db.connection.db.admin().ping();
-    console.log('✅ Database ping successful');
+    if (db.connection.db) {
+      await db.connection.db.admin().ping();
+      console.log('✅ Database ping successful');
+    } else {
+      console.log('⚠️ Database connection established but db object is undefined');
+    }
     
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error code:', error.code);
+    console.error('❌ Error name:', (error as any).name);
+    console.error('❌ Error message:', (error as Error).message);
+    console.error('❌ Error code:', (error as any).code);
     
     // Reset connection state
     connection.isConnected = 0;
     
     // Provide specific error messages for common issues
-    if (error.name === 'MongoNetworkError') {
-      throw new Error(`Network error connecting to MongoDB: ${error.message}. Please check your internet connection and MongoDB URI.`);
+    if ((error as any).name === 'MongoNetworkError') {
+      throw new Error(`Network error connecting to MongoDB: ${(error as Error).message}. Please check your internet connection and MongoDB URI.`);
     }
     
-    if (error.name === 'MongoServerSelectionError') {
-      throw new Error(`Cannot connect to MongoDB server: ${error.message}. Please check your MongoDB URI and ensure the server is running.`);
+    if ((error as any).name === 'MongoServerSelectionError') {
+      throw new Error(`Cannot connect to MongoDB server: ${(error as Error).message}. Please check your MongoDB URI and ensure the server is running.`);
     }
     
-    if (error.code === 'ENOTFOUND') {
-      throw new Error(`DNS lookup failed for MongoDB host. Please check your MongoDB URI: ${error.message}`);
+    if ((error as any).code === 'ENOTFOUND') {
+      throw new Error(`DNS lookup failed for MongoDB host. Please check your MongoDB URI: ${(error as Error).message}`);
     }
     
-    if (error.code === 'ECONNREFUSED') {
-      throw new Error(`Connection refused to MongoDB. Please check if MongoDB is running and the URI is correct: ${error.message}`);
+    if ((error as any).code === 'ECONNREFUSED') {
+      throw new Error(`Connection refused to MongoDB. Please check if MongoDB is running and the URI is correct: ${(error as Error).message}`);
     }
     
     throw error;
