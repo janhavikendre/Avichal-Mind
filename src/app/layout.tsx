@@ -41,7 +41,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.className} antialiased`}>
-          <ThemeProvider defaultTheme="system" storageKey="avichal-theme">
+          <ThemeProvider defaultTheme="light" storageKey="avichal-theme">
             <QueryProvider>
               {children}
               <Toaster 
