@@ -290,7 +290,7 @@ export default function ContinueSessionPage() {
         </div>
 
         {/* Chat Interface - Full Page with Solid Black Background */}
-        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden h-[calc(100vh-80px)]">
           <ChatInterface
             sessionId={sessionId}
             mode={session.mode}

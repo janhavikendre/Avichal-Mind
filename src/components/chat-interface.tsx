@@ -480,9 +480,9 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900 min-h-0">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-200px)]">
         {isLoading ? (
           <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
@@ -552,7 +552,7 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900 flex-shrink-0">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-end space-x-3">
             <div className="flex-1 relative">
