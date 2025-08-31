@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
       sessionCount = await Session.countDocuments();
       
       console.log('✅ Database test successful');
-    } catch (dbError) {
-      dbStatus = `Error: ${dbError.message}`;
+    } catch (dbError: unknown) {
+      dbStatus = `Error: ${(dbError as Error).message}`;
       console.error('❌ Database test failed:', dbError);
     }
     
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ Test endpoint error:', error);
     return NextResponse.json({ 
       error: 'Test failed',
-      details: error.message 
+      details: (error as Error).message 
     }, { status: 500 });
   }
 }
