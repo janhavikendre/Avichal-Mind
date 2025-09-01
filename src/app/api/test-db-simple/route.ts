@@ -18,7 +18,15 @@ export async function GET(request: NextRequest) {
     console.log(`👥 Total users in database: ${allUsers.length}`);
     
     // Group sessions by user
-    const sessionsByUser = {};
+    const sessionsByUser: Record<string, Array<{
+      id: any;
+      startedAt: Date;
+      completedAt?: Date;
+      language: string;
+      mode: string;
+      summary: string;
+    }>> = {};
+    
     for (const session of allSessions) {
       const userId = session.userId.toString();
       if (!sessionsByUser[userId]) {
