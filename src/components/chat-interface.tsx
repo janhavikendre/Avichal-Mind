@@ -432,51 +432,9 @@ export default function ChatInterface({
     </div>
   );
 
-  // Video suggestions component
+  // Video suggestions component - removed as per user preference
   const VideoSuggestions = ({ videos }: { videos: Message['videoSuggestions'] }) => {
-    if (!videos || videos.length === 0) return null;
-
-    return (
-      <div className="mt-3 space-y-2">
-        <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-          📹 {language === 'hi' ? 'संबंधित वीडियो' : language === 'mr' ? 'संबंधित व्हिडिओ' : 'Related Videos'}
-        </div>
-        <div className="grid grid-cols-1 gap-2">
-          {videos.map((video) => (
-            <div key={video.id} className="flex items-start space-x-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <img 
-                src={video.thumbnail} 
-                alt={video.title}
-                className="w-16 h-12 object-cover rounded"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
-                  {video.title}
-                </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {video.channelTitle}
-                </p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <a
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
-                  >
-                    {language === 'hi' ? 'देखें' : language === 'mr' ? 'बघा' : 'Watch'}
-                  </a>
-                  {video.duration && (
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {video.duration}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null; // Video suggestions removed as per user preference
   };
 
   return (

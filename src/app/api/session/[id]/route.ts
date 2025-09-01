@@ -6,6 +6,7 @@ import { Session } from '@/models/session';
 import { Message } from '@/models/message';
 import { maskPII } from '@/lib/utils';
 import { gamificationService } from '@/lib/gamification';
+import { AIService } from '@/services/ai';
 
 export async function GET(
   request: NextRequest,
@@ -95,8 +96,8 @@ export async function POST(
       const messages = await Message.find({ sessionId: session._id })
         .sort({ createdAt: 1 });
 
-      // Generate summary (this would typically call an AI service)
-      const summary = await generateSessionSummary(messages, session.language);
+      // Generate summary using AI service with proper language detection
+      const summary = await AIService.generateSessionSummary(messages, session.language);
 
       session.completedAt = new Date();
       session.summary = summary;
@@ -125,10 +126,18 @@ export async function POST(
       user.stats.lastSessionDate = new Date();
       
       // Update streak
-      const newStreak = gamificationService.updateStreak(user, new Date());
+      const sessionDate = new Date();
+      const newStreak = gamificationService.updateStreak(user, sessionDate);
+      console.log('Streak update:', {
+        userId: user.clerkUserId,
+        oldStreak: user.streak.current,
+        newStreak: newStreak.current,
+        lastSessionDate: user.streak.lastSessionDate,
+        sessionDate: sessionDate
+      });
       user.streak.current = newStreak.current;
       user.streak.longest = newStreak.longest;
-      user.streak.lastSessionDate = new Date();
+      user.streak.lastSessionDate = sessionDate;
       
       // Award points
       const pointsEarned = gamificationService.awardSessionPoints(session);
@@ -189,13 +198,50 @@ export async function POST(
   }
 }
 
-async function generateSessionSummary(messages: any[], language: string): Promise<string> {
-  // This is a placeholder - in production, you'd call an AI service
-  const userMessages = messages.filter(msg => msg.role === 'user');
-  const assistantMessages = messages.filter(msg => msg.role === 'assistant');
-  
-  const topics = userMessages.map(msg => msg.contentText.substring(0, 50) + '...');
-  
-  return `Session covered ${topics.length} topics including: ${topics.slice(0, 3).join(', ')}. 
-    ${assistantMessages.length} responses provided with guidance and support.`;
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const user = await getOrCreateUser(userId);
+
+    // Find the session and verify ownership
+    const session = await Session.findOne({
+      _id: params.id,
+      userId: user._id,
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    console.log(`🗑️ Deleting session ${params.id} for user ${user._id}`);
+
+    // Delete all messages associated with this session
+    const deletedMessages = await Message.deleteMany({ sessionId: session._id });
+    console.log(`🗑️ Deleted ${deletedMessages.deletedCount} messages for session ${params.id}`);
+
+    // Delete the session
+    await Session.findByIdAndDelete(params.id);
+    console.log(`🗑️ Session ${params.id} deleted successfully`);
+
+    return NextResponse.json({
+      message: 'Session deleted successfully',
+      deletedSessionId: params.id,
+      deletedMessagesCount: deletedMessages.deletedCount
+    });
+
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
+
+

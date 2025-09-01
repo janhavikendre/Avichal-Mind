@@ -16,6 +16,25 @@ export async function GET() {
 
     // Get user progress summary
     const progress = gamificationService.getUserProgress(user);
+    
+    // Check and validate streak integrity
+    const streakValidation = gamificationService.validateStreakIntegrity(user);
+    if (streakValidation.needsUpdate) {
+      console.log('Streak validation: Updating streak in database:', {
+        userId: user.clerkUserId,
+        oldStreak: user.streak.current,
+        newStreak: streakValidation.newStreak.current,
+        lastSession: user.streak.lastSessionDate,
+        reason: 'Daily streak check or integrity validation'
+      });
+      
+      // Update the user's streak in the database
+      user.streak.current = streakValidation.newStreak.current;
+      user.streak.longest = streakValidation.newStreak.longest;
+      await user.save();
+      
+      console.log('Streak updated successfully in database');
+    }
 
     // Get user's badges
     const badges = user.badges.map((badge: any) => ({
@@ -37,6 +56,41 @@ export async function GET() {
       completed: achievement.completed,
       category: achievement.category
     }));
+    
+    // Check for new achievements and update user if needed
+    const newAchievements = gamificationService.checkAchievements(user);
+    let needsUpdate = false;
+    
+    for (const achievement of newAchievements) {
+      const existingAchievement = user.achievements.find((a: any) => a.id === achievement.id);
+      if (!existingAchievement) {
+        // Add new achievement
+        user.achievements.push({
+          id: achievement.id,
+          name: achievement.name,
+          description: achievement.description,
+          progress: achievement.progress,
+          target: achievement.target,
+          completed: achievement.completed,
+          completedAt: achievement.completed ? new Date() : undefined,
+          category: achievement.category as any
+        });
+        needsUpdate = true;
+      } else if (existingAchievement.progress !== achievement.progress) {
+        // Update existing achievement progress
+        existingAchievement.progress = achievement.progress;
+        if (achievement.completed && !existingAchievement.completed) {
+          existingAchievement.completed = true;
+          existingAchievement.completedAt = new Date();
+        }
+        needsUpdate = true;
+      }
+    }
+    
+    if (needsUpdate) {
+      await user.save();
+      console.log('Updated user achievements');
+    }
 
     return NextResponse.json({
       progress,

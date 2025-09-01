@@ -250,18 +250,40 @@ class GamificationService {
     if (!lastSessionStart) {
       // First session
       newStreak = 1;
+      console.log('First session - setting streak to 1');
     } else if (sessionStart.getTime() === lastSessionStart.getTime()) {
       // Same day, no change
       newStreak = user.streak.current;
-    } else if (sessionStart.getTime() === lastSessionStart.getTime() + 24 * 60 * 60 * 1000) {
-      // Next day, increment streak
-      newStreak = user.streak.current + 1;
-    } else if (sessionStart.getTime() > lastSessionStart.getTime() + 24 * 60 * 60 * 1000) {
-      // Gap in streak, reset to 1
-      newStreak = 1;
+      console.log('Same day session - streak unchanged:', newStreak);
+    } else {
+      // Calculate the difference in days
+      const timeDiff = sessionStart.getTime() - lastSessionStart.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+      
+      console.log('Days difference:', daysDiff, 'Current streak:', user.streak.current);
+      
+      if (daysDiff === 1) {
+        // Next consecutive day, increment streak
+        newStreak = user.streak.current + 1;
+        console.log('Next consecutive day - incrementing streak to:', newStreak);
+      } else if (daysDiff > 1) {
+        // Gap in streak, reset to 1
+        newStreak = 1;
+        console.log('Gap in streak - resetting to 1');
+      } else {
+        // If daysDiff < 1, it's the same day or earlier, no change
+        console.log('Earlier day or same day - streak unchanged:', newStreak);
+      }
     }
 
     const longestStreak = Math.max(user.streak.longest, newStreak);
+
+    console.log('Streak update result:', {
+      current: newStreak,
+      longest: longestStreak,
+      sessionDate: sessionDate.toISOString(),
+      lastSessionDate: lastSessionStart?.toISOString()
+    });
 
     return {
       current: newStreak,
@@ -356,6 +378,9 @@ class GamificationService {
 
   // Get user's progress summary
   getUserProgress(user: IUser) {
+    // Ensure streak is current by checking if it needs to be updated
+    const currentStreak = this.getCurrentStreak(user);
+    
     const level = this.calculateLevel(user.points);
     const progressToNext = this.progressToNextLevel(user.points);
     const pointsForNext = this.pointsForNextLevel(level);
@@ -372,8 +397,8 @@ class GamificationService {
       level,
       points: user.points,
       progressToNext,
-      pointsForNext,
-      streak: user.streak,
+      pointsToNext: pointsForNext,
+      streak: currentStreak,
       badgeProgress,
       achievementProgress,
       completedBadges,
@@ -381,6 +406,147 @@ class GamificationService {
       completedAchievements,
       totalAchievements
     };
+  }
+
+  // Get current streak without updating the user object
+  getCurrentStreak(user: IUser) {
+    const today = new Date();
+    const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
+    
+    if (!lastSession) {
+      return { current: 0, longest: user.streak.longest };
+    }
+    
+    // Calculate days since last session
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const lastSessionStart = new Date(lastSession.getFullYear(), lastSession.getMonth(), lastSession.getDate());
+    const timeDiff = todayStart.getTime() - lastSessionStart.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+    
+    if (daysDiff === 0) {
+      // Same day, return current streak
+      return user.streak;
+    } else if (daysDiff === 1) {
+      // Yesterday, streak is still valid
+      return user.streak;
+    } else if (daysDiff > 1) {
+      // Streak broken, return 0
+      return { current: 0, longest: user.streak.longest };
+    }
+    
+    return user.streak;
+  }
+
+  // Check and update daily streak status
+  checkDailyStreak(user: IUser): { needsUpdate: boolean; newStreak: { current: number; longest: number } } {
+    const today = new Date();
+    const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
+    
+    if (!lastSession) {
+      return { needsUpdate: false, newStreak: user.streak };
+    }
+    
+    // Calculate days since last session
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const lastSessionStart = new Date(lastSession.getFullYear(), lastSession.getMonth(), lastSession.getDate());
+    const timeDiff = todayStart.getTime() - lastSessionStart.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+    
+    // If it's been more than 1 day since the last session, the streak should be reset
+    if (daysDiff > 1) {
+      const newStreak = {
+        current: 0,
+        longest: user.streak.longest // Keep the longest streak record
+      };
+      
+      console.log('Daily streak check: Streak broken after', daysDiff, 'days. Resetting to 0.');
+      return { needsUpdate: true, newStreak };
+    }
+    
+    return { needsUpdate: false, newStreak: user.streak };
+  }
+
+  // Validate and fix streak data integrity
+  validateStreakIntegrity(user: IUser): { needsUpdate: boolean; newStreak: { current: number; longest: number } } {
+    const currentStreak = this.getCurrentStreak(user);
+    const dailyCheck = this.checkDailyStreak(user);
+    
+    // If the current streak calculation differs from stored streak, update is needed
+    if (currentStreak.current !== user.streak.current) {
+      console.log('Streak integrity check: Stored streak differs from calculated streak', {
+        stored: user.streak.current,
+        calculated: currentStreak.current
+      });
+      return { needsUpdate: true, newStreak: currentStreak };
+    }
+    
+    // If daily check indicates update is needed
+    if (dailyCheck.needsUpdate) {
+      return dailyCheck;
+    }
+    
+    return { needsUpdate: false, newStreak: user.streak };
+  }
+
+  // Get detailed streak information
+  getStreakInfo(user: IUser) {
+    const currentStreak = this.getCurrentStreak(user);
+    const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
+    
+    if (!lastSession) {
+      return {
+        current: 0,
+        longest: user.streak.longest,
+        lastSessionDate: null,
+        daysSinceLastSession: null,
+        isActive: false,
+        nextMilestone: 7,
+        progressToNextMilestone: 0
+      };
+    }
+    
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const lastSessionStart = new Date(lastSession.getFullYear(), lastSession.getMonth(), lastSession.getDate());
+    const timeDiff = todayStart.getTime() - lastSessionStart.getTime();
+    const daysSinceLastSession = Math.floor(timeDiff / (1000 * 3600 * 24));
+    
+    // Determine if streak is still active (within 1 day)
+    const isActive = daysSinceLastSession <= 1;
+    
+    // Find next milestone
+    let nextMilestone = 7;
+    if (currentStreak.current >= 7) nextMilestone = 30;
+    if (currentStreak.current >= 30) nextMilestone = 100;
+    if (currentStreak.current >= 100) nextMilestone = 365;
+    
+    const progressToNextMilestone = Math.min((currentStreak.current / nextMilestone) * 100, 100);
+    
+    return {
+      current: currentStreak.current,
+      longest: user.streak.longest,
+      lastSessionDate: lastSession,
+      daysSinceLastSession,
+      isActive,
+      nextMilestone,
+      progressToNextMilestone
+    };
+  }
+
+  // Check if user can continue streak today
+  canContinueStreak(user: IUser): boolean {
+    const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
+    
+    if (!lastSession) return true; // First session
+    
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const lastSessionStart = new Date(lastSession.getFullYear(), lastSession.getMonth(), lastSession.getDate());
+    const timeDiff = todayStart.getTime() - lastSessionStart.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+    
+    // Can continue if it's the same day or the next day
+    return daysDiff <= 1;
   }
 }
 

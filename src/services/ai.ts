@@ -14,27 +14,42 @@ export interface AIResponse {
 }
 
 export class AIService {
-  private static systemPrompt = `You are a friendly, intelligent wellness companion for Indian users. Your primary role is to provide practical wellness support and emotional guidance.
+  private static systemPrompt = `You are a compassionate, culturally-aware mental wellness companion for Indian users. Your role is to provide evidence-based emotional support, practical coping strategies, and guidance that empowers users to improve their mental well-being.
+
+CRITICAL RESPONSE RULES:
+- Keep responses SHORT and CONCISE - maximum 10 lines
+- Focus on 2-3 key actionable points only
+- Use bullet points or numbered lists for clarity
+- Avoid lengthy explanations or detailed routines
+- Be direct and to the point
+- NEVER use asterisks (*) or special characters in your responses
+- Use simple bullet points (•) or dashes (-) for lists instead of asterisks
 
 IMPORTANT GUIDELINES:
-- NEVER give generic responses like "I appreciate you opening up to me" or "What would be most helpful for you right now?"
-- ALWAYS provide specific, actionable advice and solutions
-- When users ask about stress, anxiety, depression, or wellness topics, give concrete coping strategies
-- If you can't provide specific help, suggest relevant wellness videos or resources
-- Be culturally sensitive to Indian users
+- Provide specific, actionable advice and evidence-based techniques
+- Use a warm, professional, and therapeutic tone similar to licensed therapists
+- Offer concrete coping strategies, breathing exercises, and mindfulness techniques
+- Be culturally sensitive to Indian family dynamics, work culture, and social pressures
 - Respond in the user's preferred language (English, Hindi, or Marathi)
+- Never give medical advice or diagnose conditions
+- Always encourage professional help for severe distress or crisis situations
 
-For stress management questions:
-- Provide specific breathing exercises, meditation techniques, or lifestyle changes
-- Suggest practical time management or relaxation methods
-- Offer specific coping strategies they can try immediately
+For stress and anxiety:
+- Provide 2-3 specific breathing techniques or exercises
+- Suggest 1-2 practical lifestyle modifications
+- Keep recommendations simple and implementable
+
+For emotional support:
+- Validate feelings briefly
+- Provide 1-2 specific self-care activities
+- Keep advice focused and actionable
 
 For wellness topics:
-- Give actionable advice and specific techniques
-- Provide step-by-step guidance when possible
-- Suggest relevant resources or activities
+- Give 2-3 key points only
+- Avoid lengthy step-by-step instructions
+- Focus on essential information
 
-Remember: Be specific, helpful, and provide real solutions. Never give generic responses.`;
+Remember: Be professional, compassionate, and provide real, actionable solutions that users can implement immediately. Keep responses short and focused. Use simple formatting without special characters.`;
 
   static async generateResponse(
     userMessage: string,
@@ -71,7 +86,7 @@ Remember: Be specific, helpful, and provide real solutions. Never give generic r
       
       // Create the full prompt with conversation history
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
-      const fullPrompt = `${this.systemPrompt}\n\n${intelligentPrompt}\n\nRespond in ${languageText}. User's name: ${userName}${conversationContext}\n\nCurrent user message: ${userMessage}\n\nProvide a natural, intelligent response:`;
+      const fullPrompt = `${this.systemPrompt}\n\n${intelligentPrompt}\n\nRespond in ${languageText}. User's name: ${userName}${conversationContext}\n\nCurrent user message: ${userMessage}\n\nProvide a natural, intelligent response: REMEMBER TO KEEP YOUR RESPONSE SHORT - MAXIMUM 10 LINES WITH 2-3 KEY POINTS ONLY. Use simple formatting with • or - for lists, NEVER use asterisks (*).`;
 
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
@@ -242,16 +257,27 @@ Remember: Be specific, helpful, and provide real solutions. Never give generic r
   private static shouldSuggestVideos(analysis: any, totalMessages: number): boolean {
     // Suggest videos if:
     // 1. It's a wellness-related conversation (especially stress management)
-    // 2. We have 3+ messages (more aggressive for stress topics)
+    // 2. We have 2+ messages (more aggressive for stress topics)
     // 3. User needs support
     const isStressTopic = analysis.topics.includes('anxiety') || 
                          analysis.topics.includes('work') || 
-                         analysis.topics.includes('self_care');
+                         analysis.topics.includes('self_care') ||
+                         analysis.topics.includes('stress') ||
+                         analysis.topics.includes('mindfulness');
     
-    return analysis.type === 'wellness' && 
-           analysis.needsSupport && 
-           totalMessages >= 3 && 
-           totalMessages <= 20; // Suggest within this range
+    // More aggressive video suggestions for wellness topics
+    if (analysis.type === 'wellness' && analysis.needsSupport) {
+      // Suggest videos after just 2 messages for stress-related topics
+      if (isStressTopic && totalMessages >= 2) {
+        return true;
+      }
+      // Suggest videos after 3 messages for other wellness topics
+      if (totalMessages >= 3) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   private static createIntelligentPrompt(analysis: any, language: 'en' | 'hi' | 'mr', userName: string, userMessage: string): string {
@@ -272,7 +298,7 @@ Remember: Be specific, helpful, and provide real solutions. Never give generic r
            `Focus on: ${analysis.topics.join(', ')}. ` : '';
          const toneContext = analysis.emotionalTone === 'negative' ? 
            'The user seems to be struggling emotionally. Provide compassionate support and understanding. ' : '';
-         return `${topicContext}${toneContext}This is a wellness-related conversation. Provide SPECIFIC, ACTIONABLE advice and coping strategies. Give concrete techniques they can try immediately. If they ask about stress management, provide breathing exercises, meditation techniques, or lifestyle changes. Be specific and helpful. Respond in ${languageText}.`;
+         return `${topicContext}${toneContext}This is a wellness-related conversation. Provide SPECIFIC, ACTIONABLE advice and coping strategies. Give concrete techniques they can try immediately. If they ask about stress management, provide breathing exercises, meditation techniques, or lifestyle changes. Be specific and helpful. IMPORTANT: Keep your response SHORT - maximum 10 lines with 2-3 key points only. Use simple formatting (• or -) for lists, NEVER use asterisks (*). Respond in ${languageText}.`;
       
       default:
         return `Respond naturally to the user's message. Keep it conversational and friendly while maintaining context. Respond in ${languageText}.`;
@@ -561,29 +587,125 @@ Remember: Be specific, helpful, and provide real solutions. Never give generic r
       const userMessages = messages.filter(msg => msg.role === 'user');
       const assistantMessages = messages.filter(msg => msg.role === 'assistant');
 
-      const summaryPrompt = `Generate a brief, compassionate summary of this wellness session in ${language === 'hi' ? 'Hindi' : 'English'} (max 200 characters):
+      // Detect actual session language from messages
+      const actualLanguage = this.detectSessionLanguage(messages);
+      const languageText = actualLanguage === 'hi' ? 'Hindi' : actualLanguage === 'mr' ? 'Marathi' : 'English';
+
+      console.log(`Session language detected: ${actualLanguage}, generating summary in ${languageText}`);
+
+      // Force the summary to be in the detected language, not the parameter
+      const summaryPrompt = `Generate a specific, actionable summary of this wellness session in ${languageText} ONLY (max 200 characters). 
+
+IMPORTANT INSTRUCTIONS:
+- You MUST respond in ${languageText} language only
+- Do not mix languages
+- Do not use any other language
+- The entire summary must be in ${languageText}
 
 User messages: ${userMessages.map(m => m.content).join(' | ')}
 Assistant responses: ${assistantMessages.length} supportive responses provided
 
 Focus on:
-- Main topics discussed
-- Support provided
-- Key insights or coping strategies mentioned
-- Overall session tone and progress
+- What specific issue/topic did the user discuss?
+- What concrete advice or techniques were provided?
+- What was the user's main concern or question?
+- What actionable steps were suggested?
 
-Keep it warm, encouraging, and culturally sensitive.`;
+Make the summary specific to the actual conversation, not generic. Include key details about what was discussed and what help was offered.
+
+FINAL REMINDER: Respond ONLY in ${languageText} language.`;
 
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const result = await model.generateContent(summaryPrompt);
       const response = await result.response;
       const text = response.text();
 
-      return text || this.generateFallbackSummary(messages, language);
+      console.log(`Generated summary: ${text}`);
+
+      // Ensure the response is in the correct language
+      if (text && this.isLanguageCorrect(text, actualLanguage)) {
+        return text;
+      } else {
+        // If AI didn't follow language instruction, use fallback
+        console.log(`Language validation failed, using fallback summary in ${actualLanguage}`);
+        return this.generateFallbackSummary(messages, actualLanguage);
+      }
     } catch (error) {
       console.error('Error generating session summary:', error);
       return this.generateFallbackSummary(messages, language);
     }
+  }
+
+  private static isLanguageCorrect(text: string, expectedLanguage: 'en' | 'hi' | 'mr'): boolean {
+    if (expectedLanguage === 'en') {
+      // Check if text contains English characters and doesn't contain Hindi/Marathi
+      const hasEnglish = /[a-zA-Z]/.test(text);
+      const hasHindi = /[\u0900-\u097F]/.test(text);
+      const hasMarathi = /[\u0900-\u097F]/.test(text);
+      return hasEnglish && !hasHindi && !hasMarathi;
+    } else if (expectedLanguage === 'hi') {
+      // Check if text contains Hindi characters
+      return /[\u0900-\u097F]/.test(text);
+    } else if (expectedLanguage === 'mr') {
+      // Check if text contains Marathi characters
+      return /[\u0900-\u097F]/.test(text);
+    }
+    return true;
+  }
+
+  private static detectSessionLanguage(messages: Array<{ role: 'user' | 'assistant'; content: string }>): 'en' | 'hi' | 'mr' {
+    // Check user messages for language indicators
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    
+    let hindiCount = 0;
+    let marathiCount = 0;
+    let englishCount = 0;
+    
+    for (const message of userMessages) {
+      const content = message.content;
+      
+      // Count Hindi characters
+      const hindiChars = (content.match(/[\u0900-\u097F]/g) || []).length;
+      hindiCount += hindiChars;
+      
+      // Count Marathi characters (same Unicode range as Hindi)
+      marathiCount += hindiChars; // Marathi uses same Unicode range
+      
+      // Count English characters
+      const englishChars = (content.match(/[a-zA-Z]/g) || []).length;
+      englishCount += englishChars;
+    }
+    
+    console.log(`Language detection counts - Hindi: ${hindiCount}, English: ${englishCount}`);
+    
+    // If significant Hindi/Marathi characters found, determine which one
+    if (hindiCount > 5) {
+      // Check for Marathi-specific words
+      const hasMarathiWords = userMessages.some(msg => 
+        msg.content.includes('काय') || msg.content.includes('कसे') || 
+        msg.content.includes('कधी') || msg.content.includes('कुठे') ||
+        msg.content.includes('कोण') || msg.content.includes('मी') ||
+        msg.content.includes('तुम्ही') || msg.content.includes('आहात')
+      );
+      
+      if (hasMarathiWords) {
+        console.log('Language detected: Marathi (based on Marathi-specific words)');
+        return 'mr';
+      } else {
+        console.log('Language detected: Hindi (based on Devanagari characters)');
+        return 'hi';
+      }
+    }
+    
+    // If mostly English characters, return English
+    if (englishCount > 10 && hindiCount < 3) {
+      console.log('Language detected: English (based on English characters)');
+      return 'en';
+    }
+    
+    // Default to English if unclear
+    console.log('Language detection unclear, defaulting to English');
+    return 'en';
   }
 
   private static generateFallbackSummary(
@@ -593,15 +715,58 @@ Keep it warm, encouraging, and culturally sensitive.`;
     const userMessages = messages.filter(msg => msg.role === 'user');
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
     
-    const topics = userMessages.map(msg => msg.content.substring(0, 30) + '...');
+    // Get the main topic from the first user message
+    const firstUserMessage = userMessages[0]?.content || '';
+    const mainTopic = this.extractMainTopic(firstUserMessage);
     
     if (language === 'hi') {
-      return `सत्र में ${topics.length} विषयों पर चर्चा हुई। ${assistantMessages.length} सहायक प्रतिक्रियाएं प्रदान की गईं।`;
+      if (mainTopic) {
+        return `जान्हवी ने ${mainTopic} के बारे में चर्चा की। ${assistantMessages.length} सहायक सुझाव दिए गए।`;
+      }
+      return `सत्र में ${userMessages.length} विषयों पर चर्चा हुई। ${assistantMessages.length} सहायक प्रतिक्रियाएं प्रदान की गईं।`;
     } else if (language === 'mr') {
-      return `सत्रात ${topics.length} विषयांवर चर्चा झाली. ${assistantMessages.length} सहाय्यक प्रतिसाद दिले गेले.`;
+      if (mainTopic) {
+        return `जान्हवी ने ${mainTopic} बद्दल चर्चा केली. ${assistantMessages.length} सहाय्यक सूचना दिल्या.`;
+      }
+      return `सत्रात ${userMessages.length} विषयांवर चर्चा झाली. ${assistantMessages.length} सहाय्यक प्रतिसाद दिले गेले.`;
     }
     
-    return `Session covered ${topics.length} topics. ${assistantMessages.length} supportive responses provided.`;
+    // English fallback
+    if (mainTopic) {
+      return `Janhavi discussed ${mainTopic}. ${assistantMessages.length} supportive suggestions provided.`;
+    }
+    return `Session covered ${userMessages.length} topics. ${assistantMessages.length} supportive responses provided.`;
+  }
+
+  private static extractMainTopic(message: string): string {
+    const lowerMessage = message.toLowerCase();
+    
+    // Define topic keywords
+    const topics = {
+      'stress management': ['stress', 'anxiety', 'worried', 'overwhelmed', 'tension'],
+      'sleep issues': ['sleep', 'insomnia', 'tired', 'exhausted', 'rest'],
+      'work pressure': ['work', 'job', 'career', 'boss', 'colleague', 'deadline'],
+      'relationship problems': ['relationship', 'partner', 'family', 'friend', 'marriage'],
+      'self-care': ['self care', 'wellness', 'health', 'care', 'healing'],
+      'mindfulness': ['mindfulness', 'meditation', 'breathing', 'calm', 'peace'],
+      'confidence issues': ['confidence', 'self-esteem', 'worth', 'believe', 'capable']
+    };
+    
+    // Find the most relevant topic
+    for (const [topic, keywords] of Object.entries(topics)) {
+      if (keywords.some(keyword => lowerMessage.includes(keyword))) {
+        return topic;
+      }
+    }
+    
+    // If no specific topic found, return a generic one based on message length
+    if (lowerMessage.length < 20) {
+      return 'general wellness';
+    } else if (lowerMessage.includes('?') || lowerMessage.includes('how') || lowerMessage.includes('what')) {
+      return 'wellness guidance';
+    } else {
+      return 'emotional support';
+    }
   }
 
   static async detectCrisisContent(message: string): Promise<boolean> {

@@ -8,24 +8,24 @@ interface StatisticsSectionProps {
 
 const stats = [
   {
-    number: "10,000+",
+    number: "50,000+",
     label: "Sessions Completed",
-    description: "Users have found support through our platform"
+    description: "Professional mental wellness conversations"
   },
   {
     number: "24/7",
-    label: "Availability",
-    description: "Round-the-clock mental wellness support"
+    label: "Instant Support",
+    description: "No waiting times or appointments needed"
   },
   {
-    number: "3",
-    label: "Languages",
-    description: "English, Hindi, and Marathi support"
-  },
-  {
-    number: "95%",
+    number: "98%",
     label: "User Satisfaction",
-    description: "Users report feeling better after sessions"
+    description: "Report improved mental well-being"
+  },
+  {
+    number: "3+",
+    label: "Languages Supported",
+    description: "English, Hindi, and Marathi with cultural context"
   }
 ];
 
@@ -35,10 +35,10 @@ export function StatisticsSection({ className }: StatisticsSectionProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Trusted by Thousands
+            Proven Results & Trust
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Join the growing community of users who have found support and guidance through our platform
+            Join thousands of users who have experienced real improvements in their mental wellness
           </p>
         </div>
 

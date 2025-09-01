@@ -315,8 +315,8 @@ export default function SessionPage() {
           </div>
         </div>
 
-        {/* Messages Display */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900">
+        {/* Messages Display - Fixed Height with Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-200px)]">
           {isLoading ? (
             <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>

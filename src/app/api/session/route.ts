@@ -142,16 +142,31 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '50'); // Increased limit to show more sessions
     const skip = (page - 1) * limit;
+    const debug = searchParams.get('debug') === 'true';
 
-    const sessions = await Session.find({ userId: user._id })
+    console.log(`🔍 Fetching sessions for user ${user._id}, page: ${page}, limit: ${limit}, skip: ${skip}, debug: ${debug}`);
+
+    // If debug mode, show all sessions regardless of user
+    const query = debug ? {} : { userId: user._id };
+    
+    const sessions = await Session.find(query)
       .sort({ startedAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate('userId', 'name email');
 
-    const total = await Session.countDocuments({ userId: user._id });
+    const total = await Session.countDocuments(query);
+
+    console.log(`✅ Found ${sessions.length} sessions out of ${total} total sessions`);
+    console.log(`📅 Session dates:`, sessions.map(s => ({
+      id: s._id,
+      userId: s.userId,
+      startedAt: s.startedAt,
+      completedAt: s.completedAt,
+      summary: s.summary ? 'Has summary' : 'No summary'
+    })));
 
     return NextResponse.json({
       sessions,

@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
-import { AnimatedCard } from '@/components/ui/animated-card';
 import { Progress } from '@/components/ui/progress';
 import { 
   Trophy, 
@@ -81,6 +80,9 @@ export default function GamificationPage() {
     }
 
     fetchGamificationData();
+    
+    // Also check daily streak when page loads
+    checkDailyStreak();
   }, [user, isLoaded]);
 
   const fetchGamificationData = async () => {
@@ -100,18 +102,35 @@ export default function GamificationPage() {
     }
   };
 
-  const getLevelColor = (level: number) => {
-    if (level >= 10) return 'text-purple-600';
-    if (level >= 5) return 'text-blue-600';
-    if (level >= 3) return 'text-green-600';
-    return 'text-gray-600';
+  const refreshStreak = async () => {
+    try {
+      const response = await fetch('/api/streak/refresh', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Streak refreshed:', data);
+        // Refresh the gamification data to show updated streak
+        await fetchGamificationData();
+      }
+    } catch (error) {
+      console.error('Error refreshing streak:', error);
+    }
   };
 
-  const getStreakColor = (streak: number) => {
-    if (streak >= 30) return 'text-purple-600';
-    if (streak >= 7) return 'text-orange-600';
-    return 'text-red-600';
+  const checkDailyStreak = async () => {
+    try {
+      const response = await fetch('/api/streak/daily');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Daily streak check:', data);
+        // Refresh the gamification data to show updated streak
+        await fetchGamificationData();
+      }
+    } catch (error) {
+      console.error('Error checking daily streak:', error);
+    }
   };
+
+
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -137,11 +156,11 @@ export default function GamificationPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <FloatingNavbar />
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
             <p className="mt-2 text-gray-600 dark:text-gray-400">Loading your achievements...</p>
           </div>
         </div>
@@ -154,7 +173,7 @@ export default function GamificationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <FloatingNavbar />
       
       <div className="container mx-auto px-4 py-8 pt-24">
@@ -177,303 +196,310 @@ export default function GamificationPage() {
           </div>
         ) : userProgress ? (
           <>
-            {/* Level and Progress Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              {/* Level Card */}
-              <AnimatedCard>
-                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-purple-100 text-sm">Current Level</p>
-                        <p className={`text-3xl font-bold ${getLevelColor(userProgress.level)}`}>
-                          {userProgress.level}
-                        </p>
-                      </div>
-                      <Crown className="h-12 w-12 text-purple-200" />
-                    </div>
-                    <div className="mb-2">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Progress to Level {userProgress.level + 1}</span>
-                        <span>{Math.round(userProgress.progressToNext)}%</span>
-                      </div>
-                      <Progress value={userProgress.progressToNext} className="h-2" />
-                    </div>
-                    <p className="text-sm text-purple-100">
-                      {userProgress.points} / {userProgress.pointsForNext} points
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
+                         {/* Level and Progress Overview */}
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+               {/* Level Card */}
+               <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                 <CardContent className="p-6">
+                   <div className="flex items-center justify-between mb-4">
+                     <div>
+                       <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Current Level</p>
+                       <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                         {userProgress.level}
+                       </p>
+                     </div>
+                       <Crown className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                   </div>
+                   <div className="mb-3">
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-gray-600 dark:text-gray-400">Progress to Level {userProgress.level + 1}</span>
+                       <span className="text-gray-900 dark:text-white font-medium">{Math.round(userProgress.progressToNext)}%</span>
+                     </div>
+                     <Progress value={userProgress.progressToNext} className="h-2" />
+                   </div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">
+                     {userProgress.points} / {userProgress.pointsForNext} points
+                   </p>
+                 </CardContent>
+               </Card>
 
-              {/* Streak Card */}
-              <AnimatedCard>
-                <Card className="bg-gradient-to-br from-orange-500 to-red-500 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-orange-100 text-sm">Current Streak</p>
-                        <p className={`text-3xl font-bold ${getStreakColor(userProgress.streak.current)}`}>
-                          {userProgress.streak.current} days
-                        </p>
-                      </div>
-                      <Flame className="h-12 w-12 text-orange-200" />
-                    </div>
-                    <p className="text-sm text-orange-100 mb-2">
-                      Longest streak: {userProgress.streak.longest} days
-                    </p>
-                    <div className="flex items-center text-sm text-orange-100">
-                      <Zap className="h-4 w-4 mr-1" />
-                      Keep it going!
-                    </div>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
+                             {/* Streak Card */}
+               <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                 <CardContent className="p-6">
+                   <div className="flex items-center justify-between mb-4">
+                     <div>
+                       <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Current Streak</p>
+                       <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                         {userProgress.streak.current} days
+                       </p>
+                     </div>
+                       <Flame className="h-10 w-10 text-orange-500" />
+                   </div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                     Longest streak: {userProgress.streak.longest} days
+                   </p>
+                   <div className="space-y-2 mb-4">
+                     <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                       <Calendar className="h-3 w-3 mr-1" />
+                       Next milestone: {userProgress.streak.current >= 7 ? (userProgress.streak.current >= 30 ? '100 days' : '30 days') : '7 days'}
+                     </div>
+                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                       <div 
+                         className="bg-orange-500 h-1.5 rounded-full"
+                         style={{ 
+                           width: `${Math.min((userProgress.streak.current / (userProgress.streak.current >= 7 ? (userProgress.streak.current >= 30 ? 100 : 30) : 7)) * 100, 100)}%` 
+                         }}
+                       ></div>
+                     </div>
+                   </div>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                       <Zap className="h-4 w-4 mr-1 text-orange-500" />
+                       Keep it going!
+                     </div>
+                     <div className="flex gap-2">
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="text-xs px-2 py-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                         onClick={checkDailyStreak}
+                       >
+                         Daily Check
+                       </Button>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="text-xs px-2 py-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                         onClick={refreshStreak}
+                       >
+                         Refresh
+                       </Button>
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
 
-              {/* Points Card */}
-              <AnimatedCard>
-                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-green-100 text-sm">Total Points</p>
-                        <p className="text-3xl font-bold text-green-200">
-                          {userProgress.points}
-                        </p>
-                      </div>
-                      <Gem className="h-12 w-12 text-green-200" />
-                    </div>
-                    <p className="text-sm text-green-100 mb-2">
-                      Earn points by completing sessions
-                    </p>
-                    <div className="flex items-center text-sm text-green-100">
-                      <Heart className="h-4 w-4 mr-1" />
-                      Every session counts!
-                    </div>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
+                             {/* Points Card */}
+               <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                 <CardContent className="p-6">
+                   <div className="flex items-center justify-between mb-4">
+                     <div>
+                       <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Points</p>
+                       <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                         {userProgress.points}
+                       </p>
+                     </div>
+                       <Gem className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                   </div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                     Earn points by completing sessions
+                   </p>
+                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                     <Heart className="h-4 w-4 mr-1 text-gray-400" />
+                     Every session counts!
+                   </div>
+                 </CardContent>
+               </Card>
             </div>
 
-            {/* Progress Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <AnimatedCard>
-                <Card className="bg-white dark:bg-gray-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-gray-900 dark:text-white">
-                      <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
-                      Badges Progress
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Unlocked</span>
-                        <span>{userProgress.completedBadges} / {userProgress.totalBadges}</span>
-                      </div>
-                      <Progress value={userProgress.badgeProgress} className="h-2" />
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {Math.round(userProgress.badgeProgress)}% complete
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
+                         {/* Progress Stats */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+               <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                 <CardHeader>
+                   <CardTitle className="flex items-center text-gray-900 dark:text-white">
+                     <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+                     Badges Progress
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="mb-4">
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-gray-600 dark:text-gray-400">Unlocked</span>
+                       <span className="text-gray-900 dark:text-white font-medium">{userProgress.completedBadges} / {userProgress.totalBadges}</span>
+                     </div>
+                     <Progress value={userProgress.badgeProgress} className="h-2" />
+                   </div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">
+                     {Math.round(userProgress.badgeProgress)}% complete
+                   </p>
+                 </CardContent>
+               </Card>
 
-              <AnimatedCard>
-                <Card className="bg-white dark:bg-gray-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-gray-900 dark:text-white">
-                      <Target className="h-5 w-5 mr-2 text-blue-500" />
-                      Achievements Progress
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Completed</span>
-                        <span>{userProgress.completedAchievements} / {userProgress.totalAchievements}</span>
-                      </div>
-                      <Progress value={userProgress.achievementProgress} className="h-2" />
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {Math.round(userProgress.achievementProgress)}% complete
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
-            </div>
+               <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                 <CardHeader>
+                   <CardTitle className="flex items-center text-gray-900 dark:text-white">
+                     <Target className="h-5 w-5 mr-2 text-blue-500" />
+                     Achievements Progress
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="mb-4">
+                     <div className="flex justify-between text-sm mb-1">
+                       <span className="text-gray-600 dark:text-gray-400">Completed</span>
+                       <span className="text-gray-900 dark:text-white font-medium">{userProgress.completedAchievements} / {userProgress.totalAchievements}</span>
+                       </div>
+                     <Progress value={userProgress.achievementProgress} className="h-2" />
+                   </div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">
+                     {Math.round(userProgress.achievementProgress)}% complete
+                   </p>
+                 </CardContent>
+               </Card>
+             </div>
 
-            {/* Tabs */}
-            <div className="flex justify-center mb-6">
-              <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                <Button
-                  onClick={() => setActiveTab('overview')}
-                  className={`px-4 py-2 text-sm rounded-md ${
-                    activeTab === 'overview'
-                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  Overview
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('badges')}
-                  className={`px-4 py-2 text-sm rounded-md ${
-                    activeTab === 'badges'
-                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  Badges ({userProgress.completedBadges})
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('achievements')}
-                  className={`px-4 py-2 text-sm rounded-md ${
-                    activeTab === 'achievements'
-                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  Achievements ({userProgress.completedAchievements})
-                </Button>
-              </div>
-            </div>
+                         {/* Tabs */}
+             <div className="flex justify-center mb-6">
+               <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                 <Button
+                   onClick={() => setActiveTab('overview')}
+                   variant={activeTab === 'overview' ? 'default' : 'ghost'}
+                   className="px-4 py-2 text-sm"
+                 >
+                   Overview
+                 </Button>
+                 <Button
+                   onClick={() => setActiveTab('badges')}
+                   variant={activeTab === 'badges' ? 'default' : 'ghost'}
+                   className="px-4 py-2 text-sm"
+                 >
+                   Badges ({userProgress.completedBadges})
+                 </Button>
+                 <Button
+                   onClick={() => setActiveTab('achievements')}
+                   variant={activeTab === 'achievements' ? 'default' : 'ghost'}
+                   className="px-4 py-2 text-sm"
+                 >
+                   Achievements ({userProgress.completedAchievements})
+                 </Button>
+               </div>
+             </div>
 
-            {/* Tab Content */}
-            {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Recent Badges */}
-                <div className="md:col-span-2 lg:col-span-1">
-                  <AnimatedCard>
-                    <Card className="bg-white dark:bg-gray-800">
-                      <CardHeader>
-                        <CardTitle className="text-gray-900 dark:text-white">Recent Badges</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {badges.slice(0, 3).length > 0 ? (
-                          <div className="space-y-3">
-                            {badges.slice(0, 3).map((badge) => (
-                              <div key={badge.id} className="flex items-center space-x-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                <span className="text-2xl">{badge.icon}</span>
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900 dark:text-white">{badge.name}</p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">{badge.description}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                            No badges unlocked yet. Start your journey!
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </AnimatedCard>
-                </div>
+                         {/* Tab Content */}
+             {activeTab === 'overview' && (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {/* Recent Badges */}
+                 <div className="md:col-span-2 lg:col-span-1">
+                   <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                     <CardHeader>
+                       <CardTitle className="text-gray-900 dark:text-white">Recent Badges</CardTitle>
+                     </CardHeader>
+                     <CardContent>
+                       {badges.slice(0, 3).length > 0 ? (
+                         <div className="space-y-3">
+                           {badges.slice(0, 3).map((badge) => (
+                             <div key={badge.id} className="flex items-center space-x-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                               <span className="text-2xl">{badge.icon}</span>
+                               <div className="flex-1">
+                                 <p className="font-medium text-gray-900 dark:text-white">{badge.name}</p>
+                                 <p className="text-sm text-gray-600 dark:text-gray-400">{badge.description}</p>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       ) : (
+                         <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                           No badges unlocked yet. Start your journey!
+                         </p>
+                       )}
+                     </CardContent>
+                   </Card>
+                 </div>
 
-                {/* Recent Achievements */}
-                <div className="md:col-span-2 lg:col-span-2">
-                  <AnimatedCard>
-                    <Card className="bg-white dark:bg-gray-800">
-                      <CardHeader>
-                        <CardTitle className="text-gray-900 dark:text-white">Recent Achievements</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {achievements.filter(a => a.completed).slice(0, 3).length > 0 ? (
-                          <div className="space-y-3">
-                            {achievements.filter(a => a.completed).slice(0, 3).map((achievement) => (
-                              <div key={achievement.id} className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                                <div className="flex-shrink-0">
-                                  {getAchievementIcon(achievement.category)}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-gray-900 dark:text-white">{achievement.name}</p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
-                                </div>
-                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                  Completed
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                            No achievements completed yet. Keep going!
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </AnimatedCard>
-                </div>
-              </div>
-            )}
+                 {/* Recent Achievements */}
+                 <div className="md:col-span-2 lg:col-span-2">
+                   <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                     <CardHeader>
+                       <CardTitle className="text-gray-900 dark:text-white">Recent Achievements</CardTitle>
+                     </CardHeader>
+                     <CardContent>
+                       {achievements.filter(a => a.completed).slice(0, 3).length > 0 ? (
+                         <div className="space-y-3">
+                           {achievements.filter(a => a.completed).slice(0, 3).map((achievement) => (
+                             <div key={achievement.id} className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                               <div className="flex-shrink-0">
+                                 {getAchievementIcon(achievement.category)}
+                               </div>
+                               <div className="flex-1">
+                                 <p className="font-medium text-gray-900 dark:text-white">{achievement.name}</p>
+                                 <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
+                               </div>
+                                 <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                   Completed
+                                 </Badge>
+                               </div>
+                             ))}
+                           </div>
+                         ) : (
+                           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                             No achievements completed yet. Keep going!
+                           </p>
+                         )}
+                       </CardContent>
+                     </Card>
+                   </div>
+                 </div>
+               )}
 
-            {activeTab === 'badges' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {badges.map((badge) => (
-                  <AnimatedCard key={badge.id}>
-                    <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
-                      <CardContent className="p-6 text-center">
-                        <div className="text-4xl mb-3">{badge.icon}</div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{badge.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{badge.description}</p>
-                        <div className="flex items-center justify-center space-x-2">
-                          {getCategoryIcon(badge.category)}
-                          <Badge className="text-xs">
-                            {badge.category}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          Unlocked {new Date(badge.unlockedAt).toLocaleDateString()}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </AnimatedCard>
-                ))}
-              </div>
-            )}
+                         {activeTab === 'badges' && (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {badges.map((badge) => (
+                   <Card key={badge.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                     <CardContent className="p-6 text-center">
+                       <div className="text-4xl mb-3">{badge.icon}</div>
+                       <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{badge.name}</h3>
+                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{badge.description}</p>
+                       <div className="flex items-center justify-center space-x-2">
+                         {getCategoryIcon(badge.category)}
+                         <Badge className="text-xs">
+                           {badge.category}
+                         </Badge>
+                       </div>
+                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                         Unlocked {new Date(badge.unlockedAt).toLocaleDateString()}
+                       </p>
+                     </CardContent>
+                   </Card>
+                 ))}
+               </div>
+             )}
 
-            {activeTab === 'achievements' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {achievements.map((achievement) => (
-                  <AnimatedCard key={achievement.id}>
-                    <Card className={`bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow ${
-                      achievement.completed ? 'ring-2 ring-green-500' : ''
-                    }`}>
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            {getAchievementIcon(achievement.category)}
-                            <h3 className="font-semibold text-gray-900 dark:text-white">{achievement.name}</h3>
-                          </div>
-                          {achievement.completed && (
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                              ✓
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{achievement.description}</p>
-                        <div className="mb-2">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>Progress</span>
-                            <span>{achievement.progress} / {achievement.target}</span>
-                          </div>
-                          <Progress 
-                            value={(achievement.progress / achievement.target) * 100} 
-                            className="h-2" 
-                          />
-                        </div>
-                        <Badge className="text-xs">
-                          {achievement.category}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  </AnimatedCard>
-                ))}
-              </div>
-            )}
+             {activeTab === 'achievements' && (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {achievements.map((achievement) => (
+                   <Card key={achievement.id} className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${
+                     achievement.completed ? 'ring-2 ring-green-500' : ''
+                   }`}>
+                     <CardContent className="p-6">
+                       <div className="flex items-center justify-between mb-3">
+                         <div className="flex items-center space-x-2">
+                           {getAchievementIcon(achievement.category)}
+                           <h3 className="font-semibold text-gray-900 dark:text-white">{achievement.name}</h3>
+                         </div>
+                         {achievement.completed && (
+                           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                             ✓
+                           </Badge>
+                         )}
+                       </div>
+                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{achievement.description}</p>
+                       <div className="mb-2">
+                         <div className="flex justify-between text-xs mb-1">
+                           <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                           <span className="text-gray-900 dark:text-white font-medium">{achievement.progress} / {achievement.target}</span>
+                         </div>
+                         <Progress 
+                           value={(achievement.progress / achievement.target) * 100} 
+                           className="h-2" 
+                         />
+                       </div>
+                       <Badge className="text-xs">
+                         {achievement.category}
+                       </Badge>
+                     </CardContent>
+                   </Card>
+                 ))}
+               </div>
+             )}
           </>
         ) : (
           <div className="text-center py-12">

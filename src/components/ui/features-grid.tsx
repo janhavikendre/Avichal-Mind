@@ -18,12 +18,12 @@ const features: Feature[] = [
   {
     icon: (
       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    title: "24/7 Availability",
-    description: "Get support whenever you need it, day or night, with instant AI responses.",
-    gradient: "from-blue-500 to-blue-600",
+    title: "Evidence-Based Support",
+    description: "Built on proven therapeutic techniques including CBT, mindfulness, and stress management strategies.",
+    gradient: "from-green-500 to-green-600",
   },
   {
     icon: (
@@ -31,8 +31,8 @@ const features: Feature[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
       </svg>
     ),
-    title: "Complete Privacy",
-    description: "Your conversations are private and secure, with end-to-end encryption.",
+    title: "Complete Privacy & Security",
+    description: "HIPAA-compliant platform with end-to-end encryption and strict data protection protocols.",
     gradient: "from-purple-500 to-purple-600",
   },
   {
@@ -42,18 +42,18 @@ const features: Feature[] = [
       </svg>
     ),
     title: "Cultural Sensitivity",
-    description: "Tailored for Indian culture and values, with support in English, Hindi, and Marathi.",
+    description: "Tailored for Indian culture with understanding of family dynamics, work pressures, and social context.",
     gradient: "from-pink-500 to-pink-600",
   },
   {
     icon: (
       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
     ),
-    title: "AI-Powered Insights",
-    description: "Advanced AI technology provides personalized support and meaningful conversations.",
-    gradient: "from-green-500 to-green-600",
+    title: "Immediate Response",
+    description: "Get instant support whenever you need it, with no waiting times or appointment scheduling.",
+    gradient: "from-blue-500 to-blue-600",
   },
   {
     icon: (
@@ -61,8 +61,8 @@ const features: Feature[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
       </svg>
     ),
-    title: "Voice & Text",
-    description: "Choose between voice conversations or text chat based on your comfort and preference.",
+    title: "Voice & Text Options",
+    description: "Choose your preferred communication method - voice conversations or text chat for maximum comfort.",
     gradient: "from-indigo-500 to-indigo-600",
   },
   {
@@ -72,7 +72,7 @@ const features: Feature[] = [
       </svg>
     ),
     title: "Crisis Support",
-    description: "Advanced crisis detection with immediate support resources and emergency contacts.",
+    description: "Advanced crisis detection with immediate support resources and emergency contact information.",
     gradient: "from-red-500 to-red-600",
   },
 ];
@@ -83,10 +83,10 @@ export function FeaturesGrid({ className }: FeaturesGridProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                  <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Why Choose Avichal Mind?
+            Professional Mental Health Support
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Experience the future of mental wellness with our cutting-edge AI technology
+            Evidence-based therapeutic approaches combined with AI technology for accessible mental wellness
           </p>
                  </div>
 

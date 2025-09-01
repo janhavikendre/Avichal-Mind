@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
-import { AnimatedCard } from '@/components/ui/animated-card';
-import { Calendar, Clock, MessageSquare, Filter, Search } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, Filter, Search, Trash2, MoreVertical, Eye, Play, Wrench } from 'lucide-react';
 
 interface Session {
   _id: string;
@@ -31,6 +30,8 @@ export default function AllSessionsPage() {
   const [modeFilter, setModeFilter] = useState<'all' | 'text' | 'voice'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [debugMode, setDebugMode] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const sessionsPerPage = 10;
 
   useEffect(() => {
@@ -42,16 +43,30 @@ export default function AllSessionsPage() {
     }
 
     fetchSessions();
-  }, [user, isLoaded, currentPage, languageFilter, modeFilter]);
+  }, [user, isLoaded, currentPage, languageFilter, modeFilter, debugMode]);
 
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/session');
+      console.log('🔍 Fetching sessions...');
+      const url = debugMode ? '/api/session?limit=50&debug=true' : '/api/session?limit=50';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Sessions fetched:', data);
         setSessions(data.sessions || []);
         setTotalPages(Math.ceil((data.sessions?.length || 0) / sessionsPerPage));
+        
+        // Log session details for debugging
+        console.log('📅 All sessions:', data.sessions?.map((s: any) => ({
+          id: s._id,
+          userId: s.userId,
+          startedAt: s.startedAt,
+          completedAt: s.completedAt,
+          summary: s.summary ? 'Has summary' : 'No summary',
+          language: s.language,
+          mode: s.mode
+        })));
       } else {
         console.error('Failed to fetch sessions');
       }
@@ -61,6 +76,106 @@ export default function AllSessionsPage() {
       setLoading(false);
     }
   };
+
+  const fixSessionSummary = async (sessionId: string) => {
+    try {
+      const response = await fetch('/api/fix-summaries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Summary fixed:', result);
+        // Refresh the sessions list
+        await fetchSessions();
+        alert('Session summary has been fixed!');
+      } else {
+        console.error('Failed to fix summary');
+        alert('Failed to fix session summary. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error fixing summary:', error);
+      alert('Error fixing session summary. Please try again.');
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    // Show confirmation dialog with more detailed warning
+    const confirmed = window.confirm(
+      '⚠️ WARNING: This action cannot be undone!\n\n' +
+      'Deleting this session will permanently remove:\n' +
+      '• All conversation messages\n' +
+      '• Session summary\n' +
+      '• Session metadata\n' +
+      '• Associated audio files (if any)\n\n' +
+      'Are you absolutely sure you want to delete this session?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log(`🗑️ Deleting session ${sessionId}...`);
+      const response = await fetch(`/api/session/${sessionId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Session deleted successfully:', result);
+        // Refresh the sessions list
+        await fetchSessions();
+        alert(`✅ Session deleted successfully!\n\nDeleted ${result.deletedMessagesCount} messages.`);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Failed to delete session:', errorData);
+        alert(`❌ Failed to delete session: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting session:', error);
+      alert('❌ Error deleting session. Please check your connection and try again.');
+    }
+  };
+
+  const toggleMenu = (sessionId: string) => {
+    setOpenMenuId(openMenuId === sessionId ? null : sessionId);
+  };
+
+  const handleMenuAction = (sessionId: string, action: string) => {
+    setOpenMenuId(null); // Close menu
+    
+    switch (action) {
+      case 'view':
+        router.push(`/session/${sessionId}`);
+        break;
+      case 'continue':
+        router.push(`/session/${sessionId}/continue`);
+        break;
+      case 'fix':
+        fixSessionSummary(sessionId);
+        break;
+      case 'delete':
+        deleteSession(sessionId);
+        break;
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId && !(event.target as Element).closest('.menu-container')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -134,70 +249,62 @@ export default function AllSessionsPage() {
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <AnimatedCard>
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Sessions</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{sessions.length}</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </AnimatedCard>
+                 {/* Stats */}
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+             <CardContent className="p-4">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Sessions</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{sessions.length}</p>
+                 </div>
+                 <Calendar className="h-8 w-8 text-blue-600" />
+               </div>
+             </CardContent>
+           </Card>
 
-          <AnimatedCard>
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Text Sessions</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {sessions.filter(s => s.mode === 'text').length}
-                    </p>
-                  </div>
-                  <MessageSquare className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </AnimatedCard>
+           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+             <CardContent className="p-4">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">Text Sessions</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                     {sessions.filter(s => s.mode === 'text').length}
+                   </p>
+                 </div>
+                 <MessageSquare className="h-8 w-8 text-green-600" />
+               </div>
+             </CardContent>
+           </Card>
 
-          <AnimatedCard>
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Voice Sessions</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {sessions.filter(s => s.mode === 'voice').length}
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </AnimatedCard>
+           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+             <CardContent className="p-4">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">Voice Sessions</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                     {sessions.filter(s => s.mode === 'voice').length}
+                   </p>
+                 </div>
+                 <Clock className="h-8 w-8 text-purple-600" />
+               </div>
+             </CardContent>
+           </Card>
 
-          <AnimatedCard>
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Messages</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)}
-                    </p>
-                  </div>
-                  <MessageSquare className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </AnimatedCard>
-        </div>
+           <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+             <CardContent className="p-4">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Messages</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                     {sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)}
+                   </p>
+                 </div>
+                 <MessageSquare className="h-8 w-8 text-orange-600" />
+               </div>
+             </CardContent>
+           </Card>
+         </div>
 
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6">
@@ -243,6 +350,16 @@ export default function AllSessionsPage() {
                 <option value="voice">Voice</option>
               </select>
             </div>
+
+            {/* Debug Toggle */}
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setDebugMode(!debugMode)}
+                className={`text-sm ${debugMode ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+              >
+                {debugMode ? 'Hide All Sessions' : 'Show All Sessions'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -275,11 +392,10 @@ export default function AllSessionsPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {paginatedSessions.map((session) => (
-              <AnimatedCard key={session._id}>
-                <Card className="bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
+                     <div className="space-y-4">
+             {paginatedSessions.map((session) => (
+               <Card key={session._id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow">
+                 <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
@@ -320,28 +436,65 @@ export default function AllSessionsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex space-x-2 mt-4 md:mt-0">
+                      <div className="relative menu-container">
                         <Button
-                          onClick={() => router.push(`/session/${session._id}`)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-sm"
+                          onClick={() => toggleMenu(session._id)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          View
+                          <MoreVertical className="h-4 w-4 text-gray-500" />
                         </Button>
-                        {!session.isCompleted && (
-                          <Button
-                            onClick={() => router.push(`/session/${session._id}/continue`)}
-                            className="bg-green-600 hover:bg-green-700 text-white text-sm"
-                          >
-                            Continue
-                          </Button>
+                        
+                        {openMenuId === session._id && (
+                          <div className="absolute right-0 top-8 z-50 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleMenuAction(session._id, 'view')}
+                                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                              >
+                                <Eye className="mr-3 h-4 w-4" />
+                                View Session
+                              </button>
+                              
+                              {!session.isCompleted && (
+                                <button
+                                  onClick={() => handleMenuAction(session._id, 'continue')}
+                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                                >
+                                  <Play className="mr-3 h-4 w-4" />
+                                  Continue Session
+                                </button>
+                              )}
+                              
+                              {session.isCompleted && session.summary && (
+                                <button
+                                  onClick={() => handleMenuAction(session._id, 'fix')}
+                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                                >
+                                  <Wrench className="mr-3 h-4 w-4" />
+                                  Fix Summary
+                                </button>
+                              )}
+                              
+                              <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                              
+                              <button
+                                onClick={() => handleMenuAction(session._id, 'delete')}
+                                className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="mr-3 h-4 w-4" />
+                                Delete Session
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </AnimatedCard>
-            ))}
-          </div>
+              ))}
+            </div>
         )}
 
         {/* Pagination */}

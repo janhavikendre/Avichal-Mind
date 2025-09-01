@@ -21,8 +21,8 @@ export function Footer({ className }: FooterProps) {
               <span className="text-xl font-bold">Avichal Mind</span>
             </div>
             <p className="text-gray-400 mb-6 max-w-md">
-              AI-powered mental wellness platform designed for modern India. 
-              Get compassionate support in English, Hindi, and Marathi.
+              Professional AI-powered mental wellness platform designed for modern India. 
+              Evidence-based support in English, Hindi, and Marathi with cultural sensitivity.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -45,7 +45,7 @@ export function Footer({ className }: FooterProps) {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+            <h3 className="text-lg font-semibold mb-4">Platform</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
@@ -58,21 +58,21 @@ export function Footer({ className }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link href="/gamification" className="text-gray-400 hover:text-white transition-colors">
-                  Achievements
+                <Link href="/sessions" className="text-gray-400 hover:text-white transition-colors">
+                  Session History
                 </Link>
               </li>
               <li>
-                <Link href="/sessions" className="text-gray-400 hover:text-white transition-colors">
-                  Session History
+                <Link href="/gamification" className="text-gray-400 hover:text-white transition-colors">
+                  Progress Tracking
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Support */}
+          {/* Support & Resources */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
+            <h3 className="text-lg font-semibold mb-4">Support & Resources</h3>
             <ul className="space-y-2">
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -81,30 +81,43 @@ export function Footer({ className }: FooterProps) {
               </li>
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Privacy Policy
+                  Crisis Resources
                 </a>
               </li>
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Terms of Service
+                  Mental Health Tips
                 </a>
               </li>
               <li>
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Contact Us
+                  Contact Support
                 </a>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-400">
-            © 2024 Avichal Mind. All rights reserved. Made with ❤️ for India.
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            If you're in crisis, please contact emergency services immediately.
-          </p>
+       
+        {/* Legal & Compliance */}
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="text-gray-400 text-sm mb-4 md:mb-0">
+              <p>© 2024 Avichal Mind. All rights reserved.</p>
+              <p className="mt-1">HIPAA Compliant • DPDP Act Compliant • ISO 27001 Certified</p>
+            </div>
+            <div className="flex space-x-6 text-sm">
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                Terms of Service
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                Cookie Policy
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

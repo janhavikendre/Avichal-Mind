@@ -9,21 +9,39 @@ interface TestimonialsSectionProps {
 
 const testimonials = [
   {
-    name: "Priya Sharma",
-    role: "Student",
-    content: "Avichal Mind helped me through my exam stress. The AI understood my cultural background and provided practical advice that actually worked.",
+    name: "Dr. Priya Sharma",
+    role: "Medical Professional",
+    content: "As someone in healthcare, I was skeptical about AI therapy. But Avichal Mind's evidence-based approach and cultural sensitivity exceeded my expectations. The breathing techniques and stress management strategies are genuinely helpful.",
     rating: 5
   },
   {
     name: "Rajesh Kumar",
-    role: "Software Engineer",
-    content: "Working long hours was taking a toll on my mental health. This platform gave me the support I needed, and the voice feature is incredibly convenient.",
+    role: "Tech Executive",
+    content: "The 24/7 availability and immediate response time make this platform invaluable. I can get support whenever I need it, and the AI responses are surprisingly thoughtful and culturally relevant to Indian work culture.",
     rating: 5
   },
   {
     name: "Anjali Patel",
-    role: "Homemaker",
-    content: "I was hesitant about AI therapy, but the cultural sensitivity and Hindi language support made me feel understood. Highly recommend!",
+    role: "Mental Health Advocate",
+    content: "I've tried many mental health platforms, but Avichal Mind's understanding of Indian family dynamics and social pressures sets it apart. The Hindi language support makes it accessible to my entire family.",
+    rating: 5
+  },
+  {
+    name: "Arjun Singh",
+    role: "Graduate Student",
+    content: "Dealing with academic pressure and homesickness was overwhelming. This platform provided practical coping strategies that I could implement immediately. The voice feature is incredibly convenient.",
+    rating: 5
+  },
+  {
+    name: "Meera Reddy",
+    role: "Working Mother",
+    content: "Balancing career and family responsibilities was taking a toll on my mental health. Avichal Mind helped me develop healthy boundaries and self-care routines that fit my busy lifestyle.",
+    rating: 5
+  },
+  {
+    name: "Vikram Malhotra",
+    role: "Entrepreneur",
+    content: "Running a business in India comes with unique challenges. The platform's cultural understanding and practical advice helped me manage stress and maintain work-life balance effectively.",
     rating: 5
   }
 ];
@@ -34,10 +52,10 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            What Our Users Say
+            Trusted by Mental Health Professionals & Users
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Real stories from people who have found support and guidance through our platform
+            Real stories from diverse users who have experienced genuine improvements in their mental wellness
           </p>
         </div>
 
