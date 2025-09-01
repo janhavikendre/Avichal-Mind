@@ -192,4 +192,84 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  
+  /* Mobile Responsive Utilities */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  .mobile-heading {
+    @apply text-2xl sm:text-3xl md:text-4xl;
+  }
+  
+  .mobile-padding {
+    @apply p-4 sm:p-6 md:p-8;
+  }
+  
+  .mobile-margin {
+    @apply m-4 sm:m-6 md:m-8;
+  }
+  
+  /* Touch-friendly buttons */
+  .touch-button {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Safe area for mobile devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Mobile chat specific utilities */
+  .mobile-chat-container {
+    @apply h-full flex flex-col;
+  }
+  
+  .mobile-messages-area {
+    @apply flex-1 overflow-y-auto min-h-0;
+  }
+  
+  .mobile-input-area {
+    @apply flex-shrink-0 border-t border-gray-200 dark:border-gray-700;
+  }
+  
+  /* Prevent zoom on input focus for mobile */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+  
+  /* Mobile sidebar utilities */
+  .mobile-sidebar-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden;
+  }
+  
+  .mobile-sidebar {
+    @apply fixed lg:relative inset-y-0 left-0 z-50 transition-all duration-300;
+  }
+  
+  .mobile-sidebar-hidden {
+    @apply -translate-x-full lg:translate-x-0;
+  }
+  
+  .mobile-sidebar-visible {
+    @apply translate-x-0;
+  }
 }

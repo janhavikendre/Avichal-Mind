@@ -43,6 +43,7 @@ export default function ContinueSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const sessionId = params.id as string;
 
@@ -174,10 +175,18 @@ export default function ContinueSessionPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <div className={`bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ${
+      <div className={`fixed lg:relative inset-y-0 left-0 z-50 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ${
         sidebarCollapsed ? 'w-16' : 'w-80'
-      }`}>
+      } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -270,27 +279,37 @@ export default function ContinueSessionPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0">
         {/* Top Bar */}
-        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Continue Session</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Resume your conversation where you left off</p>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Continue Session</h1>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Resume your conversation where you left off</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              <div className="hidden sm:block bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
                 AM Avichal Mind
               </div>
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">J</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">J</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Chat Interface - Full Page with Solid Black Background */}
-        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden h-[calc(100vh-80px)]">
+        {/* Chat Interface - Full Page with Fixed Height */}
+        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden h-[calc(100vh-120px)]">
           <ChatInterface
             sessionId={sessionId}
             mode={session.mode}

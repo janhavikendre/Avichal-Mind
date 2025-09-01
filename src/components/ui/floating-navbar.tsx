@@ -21,28 +21,29 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
         className
       )}
     >
-      <div className="flex items-center gap-2 rounded-full border border-gray-200/50 bg-white/80 backdrop-blur-md px-4 py-2 shadow-lg dark:border-gray-800/50 dark:bg-gray-950/80">
+      <div className="flex items-center gap-2 rounded-full border border-gray-200/50 bg-white/80 backdrop-blur-md px-3 sm:px-4 py-2 shadow-lg dark:border-gray-800/50 dark:bg-gray-950/80">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-sm">AM</span>
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-xs sm:text-sm">AM</span>
           </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <span className="hidden sm:block text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             Avichal Mind
           </span>
         </div>
         
-        <div className="flex items-center space-x-2 ml-4">
+        <div className="flex items-center space-x-1 sm:space-x-2 ml-2 sm:ml-4">
           <ThemeToggle />
           
           <SignedOut>
             <SignInButton mode="modal">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+              <Button variant="ghost" size="sm" className="hidden sm:block text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 text-xs sm:text-sm">
                 Sign In
               </Button>
             </SignInButton>
             <SignUpButton mode="modal">
-                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full">
-                Get Started
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs sm:text-sm px-2 sm:px-3">
+                <span className="hidden sm:inline">Get Started</span>
+                <span className="sm:hidden">Start</span>
               </Button>
             </SignUpButton>
           </SignedOut>
@@ -51,7 +52,7 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
             <UserButton 
               appearance={{
                 elements: {
-                  userButtonAvatarBox: "w-8 h-8",
+                  userButtonAvatarBox: "w-6 h-6 sm:w-8 sm:h-8",
                   userButtonTrigger: "focus:shadow-none"
                 }
               }}

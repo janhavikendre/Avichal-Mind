@@ -45,6 +45,7 @@ export default function SessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -200,10 +201,18 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <div className={`bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ${
+      <div className={`fixed lg:relative inset-y-0 left-0 z-50 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ${
         sidebarCollapsed ? 'w-16' : 'w-80'
-      }`}>
+      } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -296,27 +305,37 @@ export default function SessionPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0">
         {/* Top Bar */}
-        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">View Session</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Read-only view of your conversation</p>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">View Session</h1>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Read-only view of your conversation</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              <div className="hidden sm:block bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
                 AM Avichal Mind
               </div>
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">J</span>
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">J</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Messages Display - Fixed Height with Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-200px)]">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-120px)]">
           {isLoading ? (
             <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
@@ -333,24 +352,24 @@ export default function SessionPage() {
                 key={message._id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                  <div className={`px-4 py-3 rounded-lg ${
+                <div className={`max-w-[85%] sm:max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                  <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
                     message.role === 'user' 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                   }`}>
-                    <div className="text-sm leading-relaxed">
+                    <div className="text-xs sm:text-sm leading-relaxed">
                       {message.contentText}
                     </div>
                   </div>
-                  <div className={`flex items-center justify-between mt-2 text-xs ${
+                  <div className={`flex items-center justify-between mt-1 sm:mt-2 text-xs ${
                     message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
                   }`}>
-                    <span>{new Date(message.createdAt).toLocaleTimeString()}</span>
+                    <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
                     {message.role === 'assistant' && (
                       <button 
                         onClick={() => playMessage(message)}
-                        className={`ml-2 p-1 rounded ${
+                        className={`ml-2 p-1 rounded touch-button ${
                           playingMessageId === message._id 
                             ? 'bg-red-600 text-white' 
                             : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -358,8 +377,8 @@ export default function SessionPage() {
                         title={playingMessageId === message._id ? 'Stop' : 'Play'}
                       >
                         {playingMessageId === message._id ? 
-                          <Pause size={12} /> : 
-                          <Play size={12} />
+                          <Pause size={10} className="sm:w-3 sm:h-3" /> : 
+                          <Play size={10} className="sm:w-3 sm:h-3" />
                         }
                       </button>
                     )}

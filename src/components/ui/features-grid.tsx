@@ -79,35 +79,35 @@ const features: Feature[] = [
 
 export function FeaturesGrid({ className }: FeaturesGridProps) {
   return (
-    <div className={cn("py-20", className)}>
+    <div className={cn("py-12 sm:py-16 md:py-20", className)}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                 <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Professional Mental Health Support
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
             Evidence-based therapeutic approaches combined with AI technology for accessible mental wellness
           </p>
-                 </div>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {features.map((feature, index) => (
-                         <div
-               key={index}
-               className="relative"
-             >
-               <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-200/50 dark:border-gray-800/50">
-                                   <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mb-6`}>
-                   {feature.icon}
-                 </div>
-                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                   {feature.title}
-                 </h3>
-                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                   {feature.description}
-                 </p>
-               </div>
-             </div>
+            <div
+              key={index}
+              className="relative"
+            >
+              <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-gray-200/50 dark:border-gray-800/50">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mb-4 sm:mb-6`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
+                  {feature.title}
+                </h3>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+            </div>
           ))}
         </div>
       </div>

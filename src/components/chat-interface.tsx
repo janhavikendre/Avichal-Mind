@@ -417,13 +417,13 @@ export default function ChatInterface({
   // Typing indicator component
   const TypingIndicator = () => (
     <div className="flex justify-start mb-4">
-      <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3 max-w-[80%]">
+      <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 sm:px-4 py-2 sm:py-3 max-w-[85%] sm:max-w-[80%]">
         <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-          <div className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"></div>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
         </div>
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
           {language === 'hi' ? 'AI टाइप कर रहा है...' : 
            language === 'mr' ? 'AI टाइप करत आहे...' : 
            'AI is typing...'}
@@ -438,22 +438,22 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-200px)]">
+              <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0">
         {isLoading ? (
           <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-            <p className="text-sm">Loading conversation...</p>
+            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
+            <p className="text-xs sm:text-sm">Loading conversation...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <div className="text-center text-gray-600 dark:text-gray-400 mt-8 px-4">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
               {language === 'hi' ? 'मैं आपकी कैसे मदद कर सकता हूं?' : 
                language === 'mr' ? 'मी तुमची कशी मदत करू शकतो?' : 
                'What can I help with?'}
             </h1>
-            <p className="text-sm">
+            <p className="text-xs sm:text-sm">
               {language === 'hi' ? 'अपनी बातचीत यहाँ शुरू करें...' : 
                language === 'mr' ? 'तुमची संवाद येथे सुरू करा...' : 
                'Begin your wellness journey'}
@@ -466,27 +466,27 @@ export default function ChatInterface({
                 key={message._id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                  <div className={`px-4 py-3 rounded-lg ${
+                <div className={`max-w-[85%] sm:max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                  <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
                     message.role === 'user' 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                   }`}>
-                    <div className="text-sm leading-relaxed">
+                    <div className="text-xs sm:text-sm leading-relaxed">
                       {message.contentText}
                     </div>
                     {message.role === 'assistant' && message.videoSuggestions && (
                       <VideoSuggestions videos={message.videoSuggestions} />
                     )}
                   </div>
-                                      <div className={`flex items-center justify-between mt-2 text-xs ${
-                      message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
-                    }`}>
-                    <span>{new Date(message.createdAt).toLocaleTimeString()}</span>
+                  <div className={`flex items-center justify-between mt-1 sm:mt-2 text-xs ${
+                    message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
+                  }`}>
+                    <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
                     {message.role === 'assistant' && !isContinueSession && (
                       <button 
                         onClick={() => playMessage(message)}
-                        className={`ml-2 p-1 rounded ${
+                        className={`ml-2 p-1 rounded touch-button ${
                           playingMessageId === message._id 
                             ? 'bg-red-600 text-white' 
                             : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -494,8 +494,8 @@ export default function ChatInterface({
                         title={playingMessageId === message._id ? 'Stop' : 'Play'}
                       >
                         {playingMessageId === message._id ? 
-                          <Pause size={12} /> : 
-                          <Play size={12} />
+                          <Pause size={10} className="sm:w-3 sm:h-3" /> : 
+                          <Play size={10} className="sm:w-3 sm:h-3" />
                         }
                       </button>
                     )}
@@ -510,9 +510,9 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900 flex-shrink-0">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-white dark:bg-gray-900 flex-shrink-0">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-end space-x-3">
+          <div className="flex items-end space-x-2 sm:space-x-3">
             <div className="flex-1 relative">
               <textarea
                 value={newMessage}
@@ -525,32 +525,32 @@ export default function ChatInterface({
                     ? 'तुमचा संदेश येथे लिहा...'
                     : 'Ask anything'
                 }
-                className="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full p-2 sm:p-3 pr-10 sm:pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 rows={1}
                 disabled={isSending}
                 style={{ minHeight: '44px', maxHeight: '200px' }}
               />
-              <div className="absolute left-3 top-3 text-gray-500 dark:text-gray-400">
-                <Plus size={16} />
+              <div className="absolute left-2 sm:left-3 top-2 sm:top-3 text-gray-500 dark:text-gray-400">
+                <Plus size={14} className="sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-1 sm:space-x-2">
               {mode === 'voice' && (
                 <button
                   onClick={toggleRecording}
-                  className={`p-3 rounded-lg ${
+                  className={`p-2 sm:p-3 rounded-lg touch-button ${
                     isRecording 
                       ? 'bg-red-600 hover:bg-red-700 text-white' 
                       : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
                   }`}
                   disabled={!supportsSpeech}
                 >
-                  {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+                  {isRecording ? <MicOff size={18} className="sm:w-5 sm:h-5" /> : <Mic size={18} className="sm:w-5 sm:h-5" />}
                 </button>
               )}
               <button
                 onClick={testTTS}
-                className="p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white"
+                className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
                 title="Test TTS"
               >
                 🔊
@@ -558,25 +558,25 @@ export default function ChatInterface({
               <button
                 onClick={sendMessage}
                 disabled={!newMessage.trim() || isSending}
-                className="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
               >
-                <Send size={20} />
+                <Send size={18} className="sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
           
           {/* Mode and Language Info */}
-          <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex space-x-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-0">
+            <div className="flex flex-wrap space-x-2">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
                 {mode === 'voice' ? 'Voice' : 'Text'}
               </span>
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
                 {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
               </span>
             </div>
             <button
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
               onClick={() => {
                 const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
