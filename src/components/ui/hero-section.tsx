@@ -12,10 +12,10 @@ export function HeroSection({ className }: HeroSectionProps) {
   return (
     <div className={cn("relative min-h-screen flex items-center justify-center", className)}>
       {/* Content */}
-      <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto mt-3">
         <div className="inline-flex items-center px-6 py-3 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium mb-8">
-          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3" />
-          Trusted by 10,000+ Users Across India
+          <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 " />
+          Innovative AI-Powered Mental Wellness Platform
         </div>
 
         <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-gray-900 dark:text-white mb-8 leading-tight">
@@ -65,24 +65,24 @@ export function HeroSection({ className }: HeroSectionProps) {
           </div>
         </div>
 
-        {/* Social Proof */}
+        {/* Platform Features */}
         <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8 max-w-4xl mx-auto">
           <div className="flex items-center justify-center space-x-8 mb-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">98%</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">User Satisfaction</div>
-            </div>
-            <div className="text-center">
               <div className="text-3xl font-bold text-blue-600">24/7</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Availability</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Always Available</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">3+</div>
+              <div className="text-3xl font-bold text-blue-600">100%</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Private & Secure</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">3</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Languages</div>
             </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-center italic">
-            "Avichal Mind helped me find peace during my most stressful times. The AI responses are surprisingly thoughtful and culturally relevant." - Priya, Mumbai
+            Experience the future of mental wellness with our innovative AI platform designed specifically for Indian users.
           </p>
         </div>
       </div>

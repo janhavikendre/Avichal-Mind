@@ -8,24 +8,24 @@ interface StatisticsSectionProps {
 
 const stats = [
   {
-    number: "50,000+",
-    label: "Sessions Completed",
-    description: "Professional mental wellness conversations"
-  },
-  {
     number: "24/7",
-    label: "Instant Support",
-    description: "No waiting times or appointments needed"
+    label: "Always Available",
+    description: "Get support whenever you need it, day or night"
   },
   {
-    number: "98%",
-    label: "User Satisfaction",
-    description: "Report improved mental well-being"
-  },
-  {
-    number: "3+",
+    number: "3",
     label: "Languages Supported",
     description: "English, Hindi, and Marathi with cultural context"
+  },
+  {
+    number: "100%",
+    label: "Private & Secure",
+    description: "Your conversations are confidential and protected"
+  },
+  {
+    number: "0",
+    label: "Waiting Time",
+    description: "Instant responses, no appointments or delays"
   }
 ];
 
@@ -35,10 +35,10 @@ export function StatisticsSection({ className }: StatisticsSectionProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Proven Results & Trust
+            Why Choose Avichal Mind?
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Join thousands of users who have experienced real improvements in their mental wellness
+            Experience the future of mental wellness with our innovative AI-powered platform
           </p>
         </div>
 

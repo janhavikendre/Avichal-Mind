@@ -17,7 +17,7 @@ export function CTASection({ className }: CTASectionProps) {
             Take Control of Your Mental Wellness Today
           </h2>
           <p className="text-xl text-white mb-8 max-w-3xl mx-auto">
-            Join over 50,000 users who have transformed their mental health with evidence-based support. 
+            Experience the future of mental wellness with our innovative AI-powered platform. 
             Get professional guidance anytime, anywhere - no waiting, no appointments, just immediate help when you need it most.
           </p>
           
