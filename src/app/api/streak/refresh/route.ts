@@ -42,7 +42,7 @@ export async function POST() {
 
     return NextResponse.json({
       message: 'Streak is current',
-      streak: currentStreak
+      streak: user.streak
     });
   } catch (error) {
     console.error('Error refreshing streak:', error);
