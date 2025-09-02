@@ -53,6 +53,33 @@ export default function ContinueSessionPage() {
     }
   }, [isLoaded, user, sessionId]);
 
+  // Cleanup effect to stop speech synthesis when component unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Stop speech synthesis when navigating away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   const loadSession = async () => {
     try {
       setIsLoading(true);
@@ -174,7 +201,7 @@ export default function ContinueSessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+    <div className="h-screen bg-white dark:bg-gray-900 flex overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
@@ -279,9 +306,9 @@ export default function ContinueSessionPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0 overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
@@ -309,13 +336,15 @@ export default function ContinueSessionPage() {
         </div>
 
         {/* Chat Interface - Full Page with Fixed Height */}
-        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden h-[calc(100vh-120px)]">
+        <div className="flex-1 bg-white dark:bg-gray-900 overflow-hidden">
           <ChatInterface
             sessionId={sessionId}
             mode={session.mode}
             language={session.language}
             onMessageSent={handleMessageSent}
             isContinueSession={true}
+            user={user}
+            isSidebarVisible={sidebarOpen}
           />
         </div>
       </div>

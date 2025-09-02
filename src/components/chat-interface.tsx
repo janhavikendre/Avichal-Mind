@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Mic, MicOff, Play, Pause, Plus } from 'lucide-react';
+import { Send, Mic, MicOff, Play, Pause, Plus, Scissors, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface Message {
@@ -27,6 +27,8 @@ interface ChatInterfaceProps {
   language: 'en' | 'hi' | 'mr';
   onMessageSent?: (message: Message) => void;
   isContinueSession?: boolean;
+  user?: any;
+  isSidebarVisible?: boolean; // Add this prop to detect sidebar visibility
 }
 
 export default function ChatInterface({ 
@@ -34,7 +36,9 @@ export default function ChatInterface({
   mode, 
   language, 
   onMessageSent,
-  isContinueSession = false
+  isContinueSession = false,
+  user,
+  isSidebarVisible = true // Default to true if not provided
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -414,6 +418,34 @@ export default function ChatInterface({
     }
   };
 
+  const cutRecording = () => {
+    if (mode !== 'voice') return;
+    try {
+      recognitionRef.current?.stop();
+    } catch (_) {
+      // ignore
+    }
+    setIsRecording(false);
+    setNewMessage('');
+    accumulatedTranscriptRef.current = '';
+    toast('Discarded');
+  };
+
+  const stopAndSendRecording = async () => {
+    if (mode !== 'voice') return;
+    try {
+      recognitionRef.current?.stop();
+    } catch (_) {
+      // ignore
+    }
+    setIsRecording(false);
+    const finalText = (newMessage.trim() || accumulatedTranscriptRef.current.trim());
+    accumulatedTranscriptRef.current = '';
+    if (!finalText) return;
+    setNewMessage(finalText);
+    await sendMessage();
+  };
+
   // Typing indicator component
   const TypingIndicator = () => (
     <div className="flex justify-start mb-4">
@@ -440,24 +472,26 @@ export default function ChatInterface({
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0">
         {isLoading ? (
           <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
             <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
             <p className="text-xs sm:text-sm">Loading conversation...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-gray-600 dark:text-gray-400 mt-8 px-4">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              {language === 'hi' ? 'मैं आपकी कैसे मदद कर सकता हूं?' : 
-               language === 'mr' ? 'मी तुमची कशी मदत करू शकतो?' : 
-               'What can I help with?'}
-            </h1>
-            <p className="text-xs sm:text-sm">
-              {language === 'hi' ? 'अपनी बातचीत यहाँ शुरू करें...' : 
-               language === 'mr' ? 'तुमची संवाद येथे सुरू करा...' : 
-               'Begin your wellness journey'}
-            </p>
+          <div className="flex flex-col items-center justify-center h-full">
+            {/* <div className="text-center text-gray-600 dark:text-gray-400 px-4 mb-8">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                {language === 'hi' ? 'मैं आपकी कैसे मदद कर सकता हूं?' : 
+                 language === 'mr' ? 'मी तुमची कशी मदत करू शकतो?' : 
+                 'What can I help with?'}
+              </h1>
+              <p className="text-xs sm:text-sm">
+                {language === 'hi' ? 'अपनी बातचीत यहाँ शुरू करें...' : 
+                 language === 'mr' ? 'तुमची संवाद येथे सुरू करा...' : 
+                 'Begin your wellness journey'}
+              </p>
+            </div> */}
           </div>
         ) : (
           <>
@@ -495,7 +529,7 @@ export default function ChatInterface({
                       >
                         {playingMessageId === message._id ? 
                           <Pause size={10} className="sm:w-3 sm:h-3" /> : 
-                          <Play size={10} className="sm:w-3 sm:h-3" />
+                          <Play size={10} className="sm:w-3 sm:w-3" />
                         }
                       </button>
                     )}
@@ -509,91 +543,264 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-white dark:bg-gray-900 flex-shrink-0">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end space-x-2 sm:space-x-3">
-            <div className="flex-1 relative">
-              <textarea
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={
-                  language === 'hi' 
-                    ? 'अपना संदेश यहाँ लिखें...' 
-                    : language === 'mr'
-                    ? 'तुमचा संदेश येथे लिहा...'
-                    : 'Ask anything'
-                }
-                className="w-full p-2 sm:p-3 pr-10 sm:pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                rows={1}
-                disabled={isSending}
-                style={{ minHeight: '44px', maxHeight: '200px' }}
-              />
-              <div className="absolute left-2 sm:left-3 top-2 sm:top-3 text-gray-500 dark:text-gray-400">
-                <Plus size={14} className="sm:w-4 sm:h-4" />
+      {/* Input Area - Centered when no messages, bottom when messages exist */}
+      {messages.length === 0 ? (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className={`w-full mx-auto px-4 pointer-events-auto flex flex-col items-center justify-center transition-all duration-300 ${
+            // When sidebar is visible, center in right white area (left margin to account for sidebar)
+            // When sidebar is hidden, center in entire white screen
+            isSidebarVisible 
+              ? 'max-w-md sm:max-w-lg ml-16 sm:ml-20' // Left margin when sidebar visible
+              : 'max-w-lg sm:max-w-xl' // Centered in entire white screen when sidebar hidden
+          }`}>
+            {/* Welcome Text Above Input */}
+            <div className="text-center text-gray-600 dark:text-gray-400 px-2 sm:px-4 mb-6 sm:mb-8">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                {user?.firstName ? `Hello, ${user.firstName}!` : 'Hello!'}
+              </h1>
+              <p className="text-xs sm:text-sm">
+                {language === 'hi' ? 'अपनी बातचीत यहाँ शुरू करें...' : 
+                 language === 'mr' ? 'तुमची संवाद येथे सुरू करा...' : 
+                 'Begin your wellness journey'}
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2 sm:space-x-3 w-full max-w-sm sm:max-w-md">
+              <div className="flex-1 relative">
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    language === 'hi' 
+                      ? 'अपना संदेश यहाँ लिखें...' 
+                      : language === 'mr'
+                      ? 'तुमचा संदेश येथे लिहा...'
+                      : 'Ask anything'
+                  }
+                  className="w-full p-2 sm:p-3 pr-10 sm:pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  rows={1}
+                  disabled={isSending}
+                  style={{ minHeight: '44px', maxHeight: '200px' }}
+                />
+                {mode !== 'voice' && (
+                  <div className="absolute left-2 sm:left-3 top-2 sm:top-3 text-gray-500 dark:text-gray-400">
+                    <Plus size={14} className="sm:w-4 sm:h-4" />
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-1 sm:space-x-2">
+                {mode === 'voice' ? (
+                  isRecording ? (
+                    <>
+                      <button
+                        onClick={cutRecording}
+                        className="p-2 sm:p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 touch-button"
+                        title="Cut"
+                      >
+                        <Scissors size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                      <button
+                        onClick={stopAndSendRecording}
+                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white touch-button"
+                        title="Send"
+                      >
+                        <Check size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={toggleRecording}
+                        className={`p-2 sm:p-3 rounded-lg touch-button flex items-center space-x-2 ${
+                          'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                        }`}
+                        disabled={!supportsSpeech}
+                        title="Start Voice"
+                      >
+                        <span className="text-sm">tap to record</span>
+                        <Mic size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                      <button
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || isSending}
+                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
+                        title="Send"
+                      >
+                        <Send size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <button
+                      onClick={testTTS}
+                      className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
+                      title="Test TTS"
+                    >
+                      🔊
+                    </button>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || isSending}
+                      className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
+                    >
+                      <Send size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            <div className="flex space-x-1 sm:space-x-2">
-              {mode === 'voice' && (
-                <button
-                  onClick={toggleRecording}
-                  className={`p-2 sm:p-3 rounded-lg touch-button ${
-                    isRecording 
-                      ? 'bg-red-600 hover:bg-red-700 text-white' 
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
-                  }`}
-                  disabled={!supportsSpeech}
-                >
-                  {isRecording ? <MicOff size={18} className="sm:w-5 sm:h-5" /> : <Mic size={18} className="sm:w-5 sm:h-5" />}
-                </button>
-              )}
+            
+            {/* Mode and Language Info */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-0">
+              <div className="flex flex-wrap space-x-2">
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                  {mode === 'voice' ? 'Voice' : 'Text'}
+                </span>
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                  {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
+                </span>
+              </div>
               <button
-                onClick={testTTS}
-                className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
-                title="Test TTS"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
+                onClick={() => {
+                  const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `session-${sessionId}-transcript.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                }}
               >
-                🔊
-              </button>
-              <button
-                onClick={sendMessage}
-                disabled={!newMessage.trim() || isSending}
-                className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
-              >
-                <Send size={18} className="sm:w-5 sm:h-5" />
+                Download Transcript
               </button>
             </div>
-          </div>
-          
-          {/* Mode and Language Info */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-0">
-            <div className="flex flex-wrap space-x-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-                {mode === 'voice' ? 'Voice' : 'Text'}
-              </span>
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-                {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
-              </span>
-            </div>
-            <button
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
-              onClick={() => {
-                const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `session-${sessionId}-transcript.txt`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Download Transcript
-            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-white dark:bg-gray-900 flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="flex-1 relative">
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    language === 'hi' 
+                      ? 'अपना संदेश यहाँ लिखें...' 
+                      : language === 'mr'
+                      ? 'तुमचा संदेश येथे लिहा...'
+                      : 'Ask anything'
+                  }
+                  className="w-full p-2 sm:p-3 pr-10 sm:pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                  rows={1}
+                  disabled={isSending}
+                  style={{ minHeight: '44px', maxHeight: '200px' }}
+                />
+                {mode !== 'voice' && (
+                  <div className="absolute left-2 sm:left-3 top-2 sm:top-3 text-gray-500 dark:text-gray-400">
+                    <Plus size={14} className="sm:w-4 sm:h-4" />
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-1 sm:space-x-2">
+                {mode === 'voice' ? (
+                  isRecording ? (
+                    <>
+                      <button
+                        onClick={cutRecording}
+                        className="p-2 sm:p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 touch-button"
+                        title="Cut"
+                      >
+                        <Scissors size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                      <button
+                        onClick={stopAndSendRecording}
+                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white touch-button"
+                        title="Send"
+                      >
+                        <Check size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={toggleRecording}
+                        className={`p-2 sm:p-3 rounded-lg touch-button flex items-center space-x-2 ${
+                          'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                        }`}
+                        disabled={!supportsSpeech}
+                        title="Start Voice"
+                      >
+                        <span className="text-sm">tap to record</span>
+                        <Mic size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                      <button
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || isSending}
+                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
+                        title="Send"
+                      >
+                        <Send size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <button
+                      onClick={testTTS}
+                      className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
+                      title="Test TTS"
+                    >
+                      🔊
+                    </button>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || isSending}
+                      className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
+                    >
+                      <Send size={18} className="sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {/* Mode and Language Info */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-2 sm:space-y-0">
+              <div className="flex flex-wrap space-x-2">
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                  {mode === 'voice' ? 'Voice' : 'Text'}
+                </span>
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                  {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
+                </span>
+              </div>
+              <button
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
+                onClick={() => {
+                  const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `session-${sessionId}-transcript.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Download Transcript
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

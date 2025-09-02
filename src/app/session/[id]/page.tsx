@@ -200,7 +200,7 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+    <div className="h-screen bg-white dark:bg-gray-900 flex overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
@@ -305,9 +305,9 @@ export default function SessionPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 lg:ml-0 overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+        <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
@@ -335,7 +335,7 @@ export default function SessionPage() {
         </div>
 
         {/* Messages Display - Fixed Height with Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0 max-h-[calc(100vh-120px)]">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0">
           {isLoading ? (
             <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>

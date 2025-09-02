@@ -548,6 +548,37 @@ class GamificationService {
     // Can continue if it's the same day or the next day
     return daysDiff <= 1;
   }
+
+  // Perform a daily check-in: increments streak if last session was yesterday, keeps it if today, resets if gap
+  dailyCheckIn(user: IUser): { current: number; longest: number; updated: boolean } {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
+
+    let current = user.streak.current || 0;
+    let longest = user.streak.longest || 0;
+    let updated = false;
+
+    if (!lastSession) {
+      current = 1;
+      updated = true;
+    } else {
+      const lastStart = new Date(lastSession.getFullYear(), lastSession.getMonth(), lastSession.getDate());
+      const daysDiff = Math.floor((todayStart.getTime() - lastStart.getTime()) / (1000 * 3600 * 24));
+      if (daysDiff === 0) {
+        // already checked today; no change
+      } else if (daysDiff === 1) {
+        current = current + 1;
+        updated = true;
+      } else if (daysDiff > 1) {
+        current = 1;
+        updated = true;
+      }
+    }
+
+    longest = Math.max(longest, current);
+    return { current, longest, updated };
+  }
 }
 
 export const gamificationService = new GamificationService();

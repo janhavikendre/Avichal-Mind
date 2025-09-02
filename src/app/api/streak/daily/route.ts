@@ -14,38 +14,23 @@ export async function GET() {
     await connectDB();
     const user = await getOrCreateUser(userId);
 
-    // Get detailed streak information
-    const streakInfo = gamificationService.getStreakInfo(user);
-    
-    // Check if streak can be continued today
-    const canContinue = gamificationService.canContinueStreak(user);
-    
-    // Validate streak integrity
-    const streakValidation = gamificationService.validateStreakIntegrity(user);
-    
-    // If streak needs update, update it in the database
-    if (streakValidation.needsUpdate) {
-      console.log('Daily streak check: Updating streak in database:', {
-        userId: user.clerkUserId,
-        oldStreak: user.streak.current,
-        newStreak: streakValidation.newStreak.current,
-        reason: 'Daily streak validation'
-      });
-      
-      user.streak.current = streakValidation.newStreak.current;
-      user.streak.longest = streakValidation.newStreak.longest;
+    // Perform a daily check-in and persist if changed
+    const result = gamificationService.dailyCheckIn(user);
+    if (result.updated) {
+      user.streak.current = result.current;
+      user.streak.longest = result.longest;
+      user.streak.lastSessionDate = new Date();
       await user.save();
-      
-      // Update streak info with new data
-      streakInfo.current = streakValidation.newStreak.current;
-      streakInfo.longest = streakValidation.newStreak.longest;
     }
+
+    const streakInfo = gamificationService.getStreakInfo(user);
+    const canContinue = gamificationService.canContinueStreak(user);
 
     return NextResponse.json({
       message: 'Daily streak check completed',
       streak: streakInfo,
       canContinueToday: canContinue,
-      needsUpdate: streakValidation.needsUpdate,
+      updated: result.updated,
       lastChecked: new Date().toISOString()
     });
   } catch (error) {
@@ -64,34 +49,19 @@ export async function POST() {
     await connectDB();
     const user = await getOrCreateUser(userId);
 
-    // Force a daily streak validation and update
-    const streakValidation = gamificationService.validateStreakIntegrity(user);
-    
-    if (streakValidation.needsUpdate) {
-      console.log('Forced daily streak update:', {
-        userId: user.clerkUserId,
-        oldStreak: user.streak.current,
-        newStreak: streakValidation.newStreak.current,
-        reason: 'Forced daily update'
-      });
-      
-      user.streak.current = streakValidation.newStreak.current;
-      user.streak.longest = streakValidation.newStreak.longest;
+    // Force a daily check-in (manual click)
+    const result = gamificationService.dailyCheckIn(user);
+    if (result.updated) {
+      user.streak.current = result.current;
+      user.streak.longest = result.longest;
+      user.streak.lastSessionDate = new Date();
       await user.save();
-      
-      return NextResponse.json({
-        message: 'Streak updated successfully',
-        oldStreak: user.streak.current,
-        newStreak: streakValidation.newStreak.current,
-        streak: streakValidation.newStreak,
-        updated: true
-      });
     }
 
     return NextResponse.json({
-      message: 'Streak is current, no update needed',
-      streak: user.streak,
-      updated: false
+      message: 'Daily check-in processed',
+      streak: { current: user.streak.current, longest: user.streak.longest },
+      updated: result.updated
     });
   } catch (error) {
     console.error('Error in forced daily streak update:', error);
