@@ -565,90 +565,154 @@ export default function ChatInterface({
               </p>
             </div>
             
-            <div className="flex items-center space-x-2 sm:space-x-3 w-full max-w-sm sm:max-w-md">
-              <div className="flex-1 relative">
-                <textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={
-                    language === 'hi' 
-                      ? 'अपना संदेश यहाँ लिखें...' 
-                      : language === 'mr'
-                      ? 'तुमचा संदेश येथे लिहा...'
-                      : 'Ask anything'
-                  }
-                  className="w-full p-2 sm:p-3 pr-10 sm:pr-12 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  rows={1}
-                  disabled={isSending}
-                  style={{ minHeight: '44px', maxHeight: '200px' }}
-                />
-                {mode !== 'voice' && (
-                  <div className="absolute left-2 sm:left-3 top-2 sm:top-3 text-gray-500 dark:text-gray-400">
-                    <Plus size={14} className="sm:w-4 sm:h-4" />
+            <div className="w-full max-w-md sm:max-w-lg">
+              {/* Mobile: Integrated Input Box with Buttons */}
+              <div className="sm:hidden">
+                <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-2xl p-3 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                    {/* Input Field */}
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={language === 'hi' ? 'कुछ भी पूछें...' : 
+                                   language === 'mr' ? 'काहीही विचारा...' : 
+                                   'Ask anything'}
+                        className="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-base"
+                        disabled={isRecording}
+                      />
+                    </div>
+                    
+                    {/* Voice Button */}
+                    <button
+                      onClick={toggleRecording}
+                      disabled={!supportsSpeech}
+                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 disabled:opacity-50"
+                    >
+                      <Mic className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </button>
+                    
+                    {/* Send Button */}
+                    <button
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || isSending}
+                      className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
                   </div>
-                )}
-              </div>
-              <div className="flex space-x-1 sm:space-x-2">
-                {mode === 'voice' ? (
-                  isRecording ? (
-                    <>
+                  
+                  {/* Recording Controls - Appear below when recording */}
+                  {isRecording && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-center space-x-3">
                       <button
                         onClick={cutRecording}
-                        className="p-2 sm:p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 touch-button"
-                        title="Cut"
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
+                        disabled={!isRecording}
                       >
-                        <Scissors size={18} className="sm:w-5 sm:h-5" />
+                        <Scissors className="w-4 h-4" />
+                        <span>Cut</span>
                       </button>
                       <button
                         onClick={stopAndSendRecording}
-                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white touch-button"
-                        title="Send"
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
+                        disabled={!isRecording}
                       >
-                        <Check size={18} className="sm:w-5 sm:h-5" />
+                        <Check className="w-4 h-4" />
+                        <span>Send</span>
                       </button>
-                    </>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Desktop: Original Layout */}
+              <div className="hidden sm:flex items-center space-x-3 w-full">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={
+                      language === 'hi' 
+                        ? 'अपना संदेश यहाँ लिखें...' 
+                        : language === 'mr'
+                        ? 'तुमचा संदेश येथे लिहा...'
+                        : 'Ask anything'
+                    }
+                    className="w-full p-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    rows={1}
+                    disabled={isSending}
+                    style={{ minHeight: '44px', maxHeight: '200px' }}
+                  />
+                  {mode !== 'voice' && (
+                    <div className="absolute left-3 top-3 text-gray-500 dark:text-gray-400">
+                      <Plus size={16} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  {mode === 'voice' ? (
+                    isRecording ? (
+                      <>
+                        <button
+                          onClick={cutRecording}
+                          className="p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                          title="Cut"
+                        >
+                          <Scissors size={18} />
+                        </button>
+                        <button
+                          onClick={stopAndSendRecording}
+                          className="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                          title="Send"
+                        >
+                          <Check size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={toggleRecording}
+                          className="p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                          disabled={!supportsSpeech}
+                          title="Start Voice"
+                        >
+                          <span className="text-sm">tap to record</span>
+                          <Mic size={18} />
+                        </button>
+                        <button
+                          onClick={sendMessage}
+                          disabled={!newMessage.trim() || isSending}
+                          className="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Send"
+                        >
+                          <Send size={18} />
+                        </button>
+                      </>
+                    )
                   ) : (
                     <>
                       <button
-                        onClick={toggleRecording}
-                        className={`p-2 sm:p-3 rounded-lg touch-button flex items-center space-x-2 ${
-                          'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
-                        }`}
-                        disabled={!supportsSpeech}
-                        title="Start Voice"
+                        onClick={testTTS}
+                        className="p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white"
+                        title="Test TTS"
                       >
-                        <span className="text-sm">tap to record</span>
-                        <Mic size={18} className="sm:w-5 sm:h-5" />
+                        🔊
                       </button>
                       <button
                         onClick={sendMessage}
                         disabled={!newMessage.trim() || isSending}
-                        className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
+                        className="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Send"
                       >
-                        <Send size={18} className="sm:w-5 sm:h-5" />
+                        <Send size={18} />
                       </button>
                     </>
-                  )
-                ) : (
-                  <>
-                    <button
-                      onClick={testTTS}
-                      className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
-                      title="Test TTS"
-                    >
-                      🔊
-                    </button>
-                    <button
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim() || isSending}
-                      className="p-2 sm:p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed touch-button"
-                    >
-                      <Send size={18} className="sm:w-5 sm:h-5" />
-                    </button>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>
             
