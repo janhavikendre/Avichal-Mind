@@ -6,7 +6,7 @@ import { Session } from '@/models/session';
 import { Message } from '@/models/message';
 import { AIService } from '@/services/ai';
 import { youtubeService } from '@/lib/youtube';
-import { crisisVideoService } from '@/lib/crisis-video-service';
+import { CrisisVideoService } from '@/lib/crisis-video-service';
 import { gamificationService } from '@/lib/gamification';
 
 export async function POST(
@@ -91,10 +91,10 @@ export async function POST(
     
     if (aiResponse.shouldSuggestVideos) {
       try {
-        if (aiResponse.isCrisisResponse && aiResponse.crisisType) {
+        if (aiResponse.isCrisisResponse && aiResponse.crisisType && aiResponse.crisisType !== 'none') {
           // Get crisis-specific videos
-          const crisisVideoResponse = await crisisVideoService.getCrisisVideos(
-            aiResponse.crisisType,
+          const crisisVideoResponse = await CrisisVideoService.getCrisisVideos(
+            aiResponse.crisisType as 'suicidal' | 'mental_breakdown' | 'panic_attack' | 'severe_distress',
             session.language,
             3
           );
@@ -145,6 +145,9 @@ export async function POST(
       tokensIn: aiResponse.tokensIn,
       tokensOut: aiResponse.tokensOut,
       videoSuggestions: videoSuggestions,
+      isCrisisResponse: aiResponse.isCrisisResponse,
+      crisisType: aiResponse.crisisType,
+      crisisSeverity: aiResponse.crisisSeverity,
     });
     await assistantMessage.save();
 
@@ -166,6 +169,9 @@ export async function POST(
         contentAudioUrl: null,
         createdAt: assistantMessage.createdAt,
         videoSuggestions: videoSuggestions,
+        isCrisisResponse: aiResponse.isCrisisResponse,
+        crisisType: aiResponse.crisisType,
+        crisisSeverity: aiResponse.crisisSeverity,
       }
     });
   } catch (error) {
