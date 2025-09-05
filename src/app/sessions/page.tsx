@@ -14,11 +14,15 @@ interface Session {
   _id: string;
   mode: 'text' | 'voice';
   language: 'en' | 'hi' | 'mr';
-  createdAt: string;
+  startedAt: string;
+  completedAt?: string;
   messageCount: number;
   summary?: string;
-  isCompleted: boolean;
-  lastMessageAt?: string;
+  totalDuration?: number;
+  safetyFlags: {
+    crisis: boolean;
+    pii: boolean;
+  };
 }
 
 export default function AllSessionsPage() {
@@ -28,6 +32,7 @@ export default function AllSessionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<'all' | 'en' | 'hi' | 'mr'>('all');
   const [modeFilter, setModeFilter] = useState<'all' | 'text' | 'voice'>('all');
+  const [crisisFilter, setCrisisFilter] = useState<'all' | 'crisis' | 'normal'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [debugMode, setDebugMode] = useState(false);
@@ -169,11 +174,14 @@ export default function AllSessionsPage() {
 
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = session.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         formatDate(session.createdAt).toLowerCase().includes(searchTerm.toLowerCase());
+                         formatDate(session.startedAt).toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLanguage = languageFilter === 'all' || session.language === languageFilter;
     const matchesMode = modeFilter === 'all' || session.mode === modeFilter;
+    const matchesCrisis = crisisFilter === 'all' || 
+                         (crisisFilter === 'crisis' && session.safetyFlags.crisis) ||
+                         (crisisFilter === 'normal' && !session.safetyFlags.crisis);
     
-    return matchesSearch && matchesLanguage && matchesMode;
+    return matchesSearch && matchesLanguage && matchesMode && matchesCrisis;
   });
 
   const paginatedSessions = filteredSessions.slice(
@@ -329,6 +337,19 @@ export default function AllSessionsPage() {
               </select>
             </div>
 
+            {/* Crisis Filter */}
+            <div className="flex items-center space-x-2">
+              <select
+                value={crisisFilter}
+                onChange={(e) => setCrisisFilter(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Sessions</option>
+                <option value="crisis">Crisis Flagged</option>
+                <option value="normal">Normal Sessions</option>
+              </select>
+            </div>
+
             {/* Debug Toggle */}
             <div className="flex items-center space-x-2">
               <Button
@@ -356,11 +377,11 @@ export default function AllSessionsPage() {
               No sessions found
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {searchTerm || languageFilter !== 'all' || modeFilter !== 'all' 
+              {searchTerm || languageFilter !== 'all' || modeFilter !== 'all' || crisisFilter !== 'all'
                 ? 'Try adjusting your filters or search terms.'
                 : 'Start your first session to begin your mental wellness journey.'}
             </p>
-            {!searchTerm && languageFilter === 'all' && modeFilter === 'all' && (
+            {!searchTerm && languageFilter === 'all' && modeFilter === 'all' && crisisFilter === 'all' && (
               <Button 
                 onClick={() => router.push('/session/new')}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -383,15 +404,20 @@ export default function AllSessionsPage() {
                           <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                             {getLanguageLabel(session.language)}
                           </Badge>
-                          {session.isCompleted && (
+                          {session.completedAt && (
                             <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                               Completed
+                            </Badge>
+                          )}
+                          {session.safetyFlags.crisis && (
+                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                              ⚠️ Crisis Flagged
                             </Badge>
                           )}
                         </div>
                         
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          Session on {formatDate(session.createdAt)}
+                          Session on {formatDate(session.startedAt)}
                         </p>
                         
                         {session.summary && (
@@ -405,10 +431,10 @@ export default function AllSessionsPage() {
                             <MessageSquare className="h-3 w-3 mr-1" />
                             {session.messageCount} messages
                           </span>
-                          {session.lastMessageAt && (
+                          {session.completedAt && (
                             <span className="flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
-                              Last active: {formatDate(session.lastMessageAt)}
+                              Completed: {formatDate(session.completedAt)}
                             </span>
                           )}
                         </div>
@@ -435,7 +461,7 @@ export default function AllSessionsPage() {
                                 View Session
                               </button>
                               
-                              {!session.isCompleted && (
+                              {!session.completedAt && (
                                 <button
                                   onClick={() => handleMenuAction(session._id, 'continue')}
                                   className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -445,7 +471,7 @@ export default function AllSessionsPage() {
                                 </button>
                               )}
                               
-                              {session.isCompleted && session.summary && (
+                              {session.completedAt && session.summary && (
                                 <button
                                   onClick={() => handleMenuAction(session._id, 'fix')}
                                   className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
