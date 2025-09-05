@@ -225,13 +225,21 @@ export default function AllSessionsPage() {
                 View and manage all your mental wellness conversations
               </p>
             </div>
-            <Button 
-              onClick={refreshSessions}
-              variant="outline"
-              className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
-            >
-              🔄 Refresh Sessions
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => router.push('/session/new')}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                ➕ New Session
+              </Button>
+              <Button 
+                onClick={refreshSessions}
+                variant="outline"
+                className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              >
+                🔄 Refresh Sessions
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -383,10 +391,10 @@ export default function AllSessionsPage() {
             </p>
             {!searchTerm && languageFilter === 'all' && modeFilter === 'all' && crisisFilter === 'all' && (
               <Button 
-                onClick={() => router.push('/session/new')}
+                onClick={() => router.push('/dashboard')}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Start New Session
+                Start Wellness Journey
               </Button>
             )}
           </div>
