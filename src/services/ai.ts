@@ -11,6 +11,9 @@ export interface AIResponse {
   tokensOut: number;
   audioUrl?: string;
   shouldSuggestVideos?: boolean;
+  isCrisisResponse?: boolean;
+  crisisType?: 'suicidal' | 'mental_breakdown' | 'panic_attack' | 'severe_distress' | 'none';
+  crisisSeverity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export class AIService {
@@ -58,6 +61,14 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<AIResponse> {
     try {
+      // First, check for crisis situations
+      const crisisDetection = await this.detectMentalBreakdown(userMessage, conversationHistory);
+      
+      if (crisisDetection.isCrisis) {
+        console.log(`Crisis detected: ${crisisDetection.crisisType}, severity: ${crisisDetection.severity}`);
+        return this.generateCrisisResponse(crisisDetection, language, userName);
+      }
+
       // If Gemini is not available, use fallback responses
       if (!hasGeminiKey || !genAI) {
         console.warn('Gemini API key not available, using fallback responses');
@@ -219,16 +230,17 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
     const topics: string[] = [];
 
     const topicKeywords = {
-      anxiety: ['anxiety', 'worry', 'stress', 'nervous', 'panic', 'fear', 'overwhelmed', 'tense'],
-      depression: ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable'],
-      relationships: ['relationship', 'partner', 'family', 'friend', 'love', 'marriage', 'dating', 'breakup'],
-      work: ['work', 'job', 'career', 'professional', 'office', 'boss', 'colleague', 'workplace'],
-      sleep: ['sleep', 'insomnia', 'rest', 'tired', 'exhausted', 'bed', 'night', 'dream'],
-      mindfulness: ['mindfulness', 'meditation', 'breathing', 'calm', 'peace', 'zen', 'yoga', 'relaxation'],
-      self_care: ['self care', 'self-care', 'wellness', 'health', 'care', 'healing', 'recovery'],
-      emotions: ['emotion', 'feeling', 'mood', 'happy', 'sad', 'angry', 'frustrated', 'joy'],
-      grief: ['grief', 'loss', 'death', 'mourning', 'bereavement', 'missing', 'gone'],
-      confidence: ['confidence', 'self-esteem', 'worth', 'value', 'believe', 'capable', 'strong']
+      anxiety: ['anxiety', 'worry', 'stress', 'nervous', 'panic', 'fear', 'overwhelmed', 'tense', 'worried', 'stressed'],
+      depression: ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable', 'sadness'],
+      relationships: ['relationship', 'partner', 'family', 'friend', 'love', 'marriage', 'dating', 'breakup', 'social'],
+      work: ['work', 'job', 'career', 'professional', 'office', 'boss', 'colleague', 'workplace', 'pressure'],
+      sleep: ['sleep', 'insomnia', 'rest', 'tired', 'exhausted', 'bed', 'night', 'dream', 'fatigue'],
+      mindfulness: ['mindfulness', 'meditation', 'breathing', 'calm', 'peace', 'zen', 'yoga', 'relaxation', 'meditate'],
+      self_care: ['self care', 'self-care', 'wellness', 'health', 'care', 'healing', 'recovery', 'mental health'],
+      emotions: ['emotion', 'feeling', 'mood', 'happy', 'sad', 'angry', 'frustrated', 'joy', 'feelings'],
+      grief: ['grief', 'loss', 'death', 'mourning', 'bereavement', 'missing', 'gone', 'losing'],
+      confidence: ['confidence', 'self-esteem', 'worth', 'value', 'believe', 'capable', 'strong', 'self worth'],
+      video: ['video', 'videos', 'youtube', 'watch', 'show me']
     };
 
     Object.entries(topicKeywords).forEach(([topic, keywords]) => {
@@ -266,20 +278,46 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
   }
 
   private static shouldSuggestVideos(analysis: any, totalMessages: number): boolean {
-    // Only suggest videos for wellness topics after 5+ messages
-    // and only for specific stress/anxiety/mindfulness topics
-    if (analysis.type !== 'wellness') {
-      return false;
+    // Always suggest videos for crisis responses
+    if (analysis.type === 'crisis') {
+      return true;
     }
     
-    const stressTopics = analysis.topics.includes('anxiety') || 
-                        analysis.topics.includes('stress') ||
-                        analysis.topics.includes('mindfulness') ||
-                        analysis.topics.includes('self_care');
-    
-    // Suggest videos only after 5+ messages for stress-related wellness topics
-    if (stressTopics && totalMessages >= 5) {
+    // For testing: always suggest videos if user asks for videos
+    if (analysis.topics.includes('video') || analysis.topics.includes('youtube')) {
       return true;
+    }
+    
+    // Suggest videos for wellness topics after 2+ messages
+    if (analysis.type === 'wellness') {
+      const wellnessTopics = analysis.topics.includes('anxiety') || 
+                            analysis.topics.includes('stress') ||
+                            analysis.topics.includes('mindfulness') ||
+                            analysis.topics.includes('self_care') ||
+                            analysis.topics.includes('depression') ||
+                            analysis.topics.includes('sleep') ||
+                            analysis.topics.includes('relationships') ||
+                            analysis.topics.includes('work') ||
+                            analysis.topics.includes('emotions') ||
+                            analysis.topics.includes('grief') ||
+                            analysis.topics.includes('confidence');
+      
+      // Suggest videos after 2+ messages for wellness topics
+      if (wellnessTopics && totalMessages >= 2) {
+        return true;
+      }
+    }
+    
+    // For general questions about mental health, suggest videos after 2+ messages
+    if (analysis.type === 'general_question') {
+      const mentalHealthKeywords = ['mental health', 'therapy', 'counseling', 'psychology', 'wellness', 'self care'];
+      const hasMentalHealthContent = mentalHealthKeywords.some(keyword => 
+        analysis.topics.some((topic: string) => topic.toLowerCase().includes(keyword))
+      );
+      
+      if (hasMentalHealthContent && totalMessages >= 2) {
+        return true;
+      }
     }
     
     return false;
@@ -812,13 +850,223 @@ Consider keywords like: suicide, kill myself, want to die, end it all, self harm
 
   private static detectCrisisKeywords(message: string): boolean {
     const crisisKeywords = [
+      // Suicidal ideation
       'suicide', 'kill myself', 'want to die', 'end it all',
       'self harm', 'hurt myself', 'no reason to live',
       'better off dead', 'can\'t take it anymore', 'end my life',
-      'don\'t want to live', 'life is not worth living'
+      'don\'t want to live', 'life is not worth living',
+      'not worth living', 'better off without me', 'everyone would be better',
+      
+      // Mental breakdown indicators
+      'mental breakdown', 'breaking down', 'falling apart', 'losing it',
+      'can\'t cope', 'can\'t handle this', 'overwhelmed completely',
+      'having a breakdown', 'losing control', 'going crazy',
+      'losing my mind', 'mental health crisis', 'emotional crisis',
+      
+      // Severe distress indicators
+      'panic attack', 'having a panic attack', 'can\'t breathe',
+      'hyperventilating', 'chest pain', 'heart racing',
+      'feeling like dying', 'scared I\'m dying', 'emergency',
+      'need help now', 'urgent help', 'crisis situation',
+      
+      // Hindi crisis keywords
+      'आत्महत्या', 'खुद को मारना', 'मरना चाहता', 'जीना नहीं चाहता',
+      'जिंदगी बेकार', 'कोई मतलब नहीं', 'सब ठीक हो जाएगा',
+      'मैं नहीं रहना चाहता', 'सबसे बेहतर होगा', 'अब और नहीं',
+      
+      // Marathi crisis keywords  
+      'आत्महत्या', 'स्वतःला मारणे', 'मरणे इच्छित', 'जगणे नको',
+      'जीवन वाया', 'काही अर्थ नाही', 'सगळं ठीक होईल',
+      'मला राहायचे नाही', 'सर्वोत्तम होईल', 'आता आणखी नाही'
     ];
     
     const lowerMessage = message.toLowerCase();
     return crisisKeywords.some(keyword => lowerMessage.includes(keyword));
+  }
+
+  // Enhanced crisis detection for mental breakdown situations
+  static async detectMentalBreakdown(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []): Promise<{
+    isCrisis: boolean;
+    crisisType: 'suicidal' | 'mental_breakdown' | 'panic_attack' | 'severe_distress' | 'none';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    needsImmediateSupport: boolean;
+  }> {
+    try {
+      const lowerMessage = message.toLowerCase();
+      
+      // Check for suicidal ideation (highest priority)
+      const suicidalKeywords = [
+        'suicide', 'kill myself', 'want to die', 'end it all',
+        'self harm', 'hurt myself', 'no reason to live',
+        'better off dead', 'end my life', 'don\'t want to live',
+        'आत्महत्या', 'खुद को मारना', 'मरना चाहता',
+        'आत्महत्या', 'स्वतःला मारणे', 'मरणे इच्छित'
+      ];
+      
+      if (suicidalKeywords.some(keyword => lowerMessage.includes(keyword))) {
+        return {
+          isCrisis: true,
+          crisisType: 'suicidal',
+          severity: 'critical',
+          needsImmediateSupport: true
+        };
+      }
+      
+      // Check for mental breakdown indicators
+      const breakdownKeywords = [
+        'mental breakdown', 'breaking down', 'falling apart', 'losing it',
+        'can\'t cope', 'can\'t handle this', 'overwhelmed completely',
+        'having a breakdown', 'losing control', 'going crazy',
+        'losing my mind', 'mental health crisis', 'emotional crisis',
+        'मानसिक टूटन', 'टूट रहा हूं', 'बिखर रहा हूं',
+        'मानसिक संकट', 'भावनात्मक संकट', 'नियंत्रण खो रहा'
+      ];
+      
+      if (breakdownKeywords.some(keyword => lowerMessage.includes(keyword))) {
+        return {
+          isCrisis: true,
+          crisisType: 'mental_breakdown',
+          severity: 'high',
+          needsImmediateSupport: true
+        };
+      }
+      
+      // Check for panic attack indicators
+      const panicKeywords = [
+        'panic attack', 'having a panic attack', 'can\'t breathe',
+        'hyperventilating', 'chest pain', 'heart racing',
+        'feeling like dying', 'scared I\'m dying', 'can\'t calm down',
+        'पैनिक अटैक', 'सांस नहीं आ रही', 'दिल तेज धड़क रहा',
+        'पॅनिक अटॅक', 'श्वास येत नाही', 'हृदय वेगाने धडकत आहे'
+      ];
+      
+      if (panicKeywords.some(keyword => lowerMessage.includes(keyword))) {
+        return {
+          isCrisis: true,
+          crisisType: 'panic_attack',
+          severity: 'high',
+          needsImmediateSupport: true
+        };
+      }
+      
+      // Check for severe distress
+      const distressKeywords = [
+        'emergency', 'need help now', 'urgent help', 'crisis situation',
+        'can\'t take it anymore', 'at my breaking point', 'desperate',
+        'hopeless', 'helpless', 'trapped', 'stuck', 'no way out',
+        'आपातकाल', 'तुरंत मदद', 'संकट', 'निराश', 'बेबस',
+        'आणीबाणी', 'त्वरित मदत', 'संकट', 'निराश', 'असहाय'
+      ];
+      
+      if (distressKeywords.some(keyword => lowerMessage.includes(keyword))) {
+        return {
+          isCrisis: true,
+          crisisType: 'severe_distress',
+          severity: 'medium',
+          needsImmediateSupport: true
+        };
+      }
+      
+      // Check conversation history for escalating distress
+      const recentMessages = conversationHistory.slice(-3);
+      const hasEscalatingDistress = recentMessages.some(msg => {
+        const content = msg.content.toLowerCase();
+        return content.includes('getting worse') || content.includes('can\'t handle') ||
+               content.includes('बिगड़ रहा') || content.includes('सहन नहीं हो रहा') ||
+               content.includes('वाढत आहे') || content.includes('सहन होत नाही');
+      });
+      
+      if (hasEscalatingDistress) {
+        return {
+          isCrisis: true,
+          crisisType: 'severe_distress',
+          severity: 'medium',
+          needsImmediateSupport: true
+        };
+      }
+      
+      return {
+        isCrisis: false,
+        crisisType: 'none',
+        severity: 'low',
+        needsImmediateSupport: false
+      };
+    } catch (error) {
+      console.error('Error detecting mental breakdown:', error);
+      return {
+        isCrisis: false,
+        crisisType: 'none',
+        severity: 'low',
+        needsImmediateSupport: false
+      };
+    }
+  }
+
+  // Generate crisis response with immediate support
+  private static async generateCrisisResponse(
+    crisisDetection: {
+      isCrisis: boolean;
+      crisisType: 'suicidal' | 'mental_breakdown' | 'panic_attack' | 'severe_distress' | 'none';
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      needsImmediateSupport: boolean;
+    },
+    language: 'en' | 'hi' | 'mr',
+    userName: string
+  ): Promise<AIResponse> {
+    const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
+    
+    // Generate crisis-specific response
+    let crisisResponse = '';
+    
+    switch (crisisDetection.crisisType) {
+      case 'suicidal':
+        crisisResponse = language === 'hi' 
+          ? `मैं आपकी बात सुनकर बहुत चिंतित हूं। आपकी जिंदगी की कीमत है और आप अकेले नहीं हैं। कृपया तुरंत किसी संकट हेल्पलाइन (988) या मानसिक स्वास्थ्य पेशेवर से संपर्क करें। यदि आप तत्काल खतरे में हैं, तो आपातकालीन सेवाओं (112) को कॉल करें।`
+          : language === 'mr'
+          ? `मी तुमचे ऐकत आहे आणि खूप चिंतित आहे. तुमच्या जीवनाला मूल्य आहे आणि तुम्ही एकटे नाही आहात. कृपया त्वरित कोणत्याही संकट हेल्पलाइन (988) किंवा मानसिक आरोग्य व्यावसायिकांशी संपर्क साधा. जर तुम्ही त्वरित धोक्यात आहात, तर आणीबाणी सेवा (112) कॉल करा.`
+          : `I'm very concerned about what you're sharing. Your life has value and you are not alone. Please contact a crisis helpline (988) or mental health professional immediately. If you're in immediate danger, call emergency services (112).`;
+        break;
+        
+      case 'mental_breakdown':
+        crisisResponse = language === 'hi'
+          ? `मैं समझता हूं कि आप बहुत कठिन समय से गुजर रहे हैं। यह ठीक है कि आप इस तरह महसूस कर रहे हैं। आपको तुरंत समर्थन की आवश्यकता है। कृपया किसी मानसिक स्वास्थ्य पेशेवर से संपर्क करें या संकट हेल्पलाइन (988) पर कॉल करें।`
+          : language === 'mr'
+          ? `मी समजतो की तुम्ही खूप कठीण काळातून जात आहात. तुम्हाला असे वाटणे ठीक आहे. तुम्हाला त्वरित समर्थनाची गरज आहे. कृपया कोणत्याही मानसिक आरोग्य व्यावसायिकांशी संपर्क साधा किंवा संकट हेल्पलाइन (988) कॉल करा.`
+          : `I understand you're going through a very difficult time. It's okay to feel this way. You need immediate support. Please contact a mental health professional or call the crisis helpline (988).`;
+        break;
+        
+      case 'panic_attack':
+        crisisResponse = language === 'hi'
+          ? `पैनिक अटैक अभिभूत करने वाला लग सकता है, लेकिन यह गुजर जाएगा। गहरी सांस लें: 4 सेकंड तक सांस अंदर लें, 4 सेकंड रोकें, 4 सेकंड तक छोड़ें। यह दोहराएं। आप सुरक्षित हैं।`
+          : language === 'mr'
+          ? `पॅनिक अटॅक अधिक भार वाटू शकतो, पण तो निघून जाईल. खोल श्वास घ्या: 4 सेकंद श्वास घ्या, 4 सेकंद धरा, 4 सेकंद सोडा. हे पुन्हा करा. तुम्ही सुरक्षित आहात.`
+          : `Panic attacks can feel overwhelming, but they will pass. Take deep breaths: Inhale for 4 seconds, hold for 4 seconds, exhale for 4 seconds. Repeat this. You are safe.`;
+        break;
+        
+      case 'severe_distress':
+        crisisResponse = language === 'hi'
+          ? `आप अभी तीव्र भावनाओं का अनुभव कर रहे हैं। यह क्षण गुजर जाएगा। आपको समर्थन की आवश्यकता है। कृपया किसी भरोसेमंद व्यक्ति से बात करें या मानसिक स्वास्थ्य पेशेवर से संपर्क करें।`
+          : language === 'mr'
+          ? `तुम्ही आता तीव्र भावना अनुभवत आहात. हा क्षण निघून जाईल. तुम्हाला समर्थनाची गरज आहे. कृपया कोणत्याही विश्वासू व्यक्तीशी बोला किंवा मानसिक आरोग्य व्यावसायिकांशी संपर्क साधा.`
+          : `You're experiencing intense emotions right now. This moment will pass. You need support. Please talk to someone you trust or contact a mental health professional.`;
+        break;
+        
+      default:
+        crisisResponse = language === 'hi'
+          ? `मैं आपकी मदद के लिए यहाँ हूं। कृपया तुरंत समर्थन लें।`
+          : language === 'mr'
+          ? `मी तुमची मदत करण्यासाठी येथे आहे. कृपया त्वरित समर्थन घ्या.`
+          : `I'm here to help you. Please reach out for immediate support.`;
+    }
+
+    return {
+      text: crisisResponse,
+      tokensIn: 0,
+      tokensOut: crisisResponse.length / 4,
+      shouldSuggestVideos: true, // Always suggest crisis videos
+      isCrisisResponse: true,
+      crisisType: crisisDetection.crisisType,
+      crisisSeverity: crisisDetection.severity
+    };
   }
 }

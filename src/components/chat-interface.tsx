@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Mic, MicOff, Play, Pause, Plus, Scissors, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { CrisisVideoSupport } from '@/components/ui/crisis-video-support';
 
 interface Message {
   _id: string;
@@ -18,7 +19,13 @@ interface Message {
     channelTitle: string;
     url: string;
     duration?: string;
+    category?: string;
+    language?: string;
+    priority?: string;
   }>;
+  isCrisisResponse?: boolean;
+  crisisType?: string;
+  crisisSeverity?: string;
 }
 
 interface ChatInterfaceProps {
@@ -464,9 +471,95 @@ export default function ChatInterface({
     </div>
   );
 
-  // Video suggestions component - removed as per user preference
-  const VideoSuggestions = ({ videos }: { videos: Message['videoSuggestions'] }) => {
-    return null; // Video suggestions removed as per user preference
+  // Video suggestions component
+  const VideoSuggestions = ({ videos, isCrisis, crisisType, language }: { 
+    videos: Message['videoSuggestions']; 
+    isCrisis?: boolean;
+    crisisType?: string;
+    language: 'en' | 'hi' | 'mr';
+  }) => {
+    if (!videos || videos.length === 0) return null;
+
+    // For crisis responses, show crisis video support component
+    if (isCrisis && crisisType) {
+      const crisisVideos = videos.map(video => ({
+        id: video.id,
+        title: video.title,
+        description: video.title, // Use title as description for now
+        thumbnail: video.thumbnail,
+        channelTitle: video.channelTitle,
+        url: video.url,
+        embedUrl: video.url.replace('watch?v=', 'embed/'),
+        duration: video.duration,
+        category: video.category as any,
+        language: language,
+        priority: video.priority as any
+      }));
+
+      const emergencyResources = {
+        helpline: '988',
+        textLine: language === 'hi' ? 'HOME को 741741 पर टेक्स्ट करें' : 
+                 language === 'mr' ? 'HOME ला 741741 ला टेक्स्ट करा' : 
+                 'Text HOME to 741741',
+        emergency: '112'
+      };
+
+      const supportMessage = language === 'hi' 
+        ? 'ये वीडियो तत्काल सहायता प्रदान करते हैं। कृपया इन्हें देखें और तुरंत समर्थन लें।'
+        : language === 'mr'
+        ? 'हे व्हिडिओ त्वरित सहाय्य प्रदान करतात. कृपया हे बघा आणि त्वरित समर्थन घ्या.'
+        : 'These videos provide immediate support. Please watch them and reach out for immediate help.';
+
+      return (
+        <CrisisVideoSupport
+          videos={crisisVideos}
+          crisisType={crisisType}
+          supportMessage={supportMessage}
+          emergencyResources={emergencyResources}
+          language={language}
+        />
+      );
+    }
+
+    // For regular wellness videos, show simple video list
+    return (
+      <div className="mt-3 space-y-2">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {language === 'hi' ? 'सहायक वीडियो:' : 
+           language === 'mr' ? 'सहाय्यक व्हिडिओ:' : 
+           'Helpful Videos:'}
+        </h4>
+        {videos.map((video) => (
+          <div key={video.id} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <img 
+              src={video.thumbnail} 
+              alt={video.title}
+              className="w-12 h-8 rounded object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/48x32/3b82f6/ffffff?text=Video';
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                {video.title}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                {video.channelTitle}
+              </p>
+            </div>
+            <button
+              onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
+              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+            >
+              {language === 'hi' ? 'देखें' : 
+               language === 'mr' ? 'बघा' : 
+               'Watch'}
+            </button>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -510,7 +603,12 @@ export default function ChatInterface({
                       {message.contentText}
                     </div>
                     {message.role === 'assistant' && message.videoSuggestions && (
-                      <VideoSuggestions videos={message.videoSuggestions} />
+                      <VideoSuggestions 
+                        videos={message.videoSuggestions} 
+                        isCrisis={message.isCrisisResponse}
+                        crisisType={message.crisisType}
+                        language={language}
+                      />
                     )}
                   </div>
                   <div className={`flex items-center justify-between mt-1 sm:mt-2 text-xs ${

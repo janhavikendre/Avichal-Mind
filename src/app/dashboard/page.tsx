@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AnimatedCard } from '@/components/ui/animated-card';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
 import { formatDate } from '@/lib/utils';
+import { useSessions } from '@/hooks/useSessions';
 import Link from 'next/link';
 
 interface Session {
@@ -28,13 +29,11 @@ interface Session {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { sessions, loading, stats, refreshSessions } = useSessions();
 
   useEffect(() => {
     if (isLoaded && user) {
       syncUser();
-      fetchSessions();
     }
   }, [isLoaded, user]);
 
@@ -58,19 +57,6 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchSessions = async () => {
-    try {
-      const response = await fetch('/api/session');
-      if (response.ok) {
-        const data = await response.json();
-        setSessions(data.sessions || []);
-      }
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isLoaded) {
     return (
@@ -102,14 +88,6 @@ export default function DashboardPage() {
     );
   }
 
-  const thisMonthSessions = sessions.filter(s => {
-    const sessionDate = new Date(s.startedAt);
-    const now = new Date();
-    return sessionDate.getMonth() === now.getMonth() && 
-           sessionDate.getFullYear() === now.getFullYear();
-  });
-
-  const totalMessages = sessions.reduce((total, session) => total + session.messageCount, 0);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -128,12 +106,19 @@ export default function DashboardPage() {
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Track your mental wellness journey and continue your path to better mental health
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Link href="/session/new">
               <Button className="bg-blue-600 hover:bg-blue-700 px-10 py-4 text-lg font-bold rounded-full">
                 Start New Session
               </Button>
             </Link>
+            <Button 
+              onClick={refreshSessions}
+              variant="outline"
+              className="px-6 py-3 text-sm font-medium rounded-full border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            >
+              🔄 Refresh Stats
+            </Button>
           </div>
         </div>
 
@@ -149,7 +134,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{sessions.length}</div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalSessions}</div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">All time sessions</p>
             </CardContent>
           </Card>
@@ -164,7 +149,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{thisMonthSessions.length}</div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats.thisMonthSessions}</div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Sessions this month</p>
             </CardContent>
           </Card>
@@ -179,7 +164,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{totalMessages}</div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalMessages}</div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Conversations shared</p>
             </CardContent>
           </Card>

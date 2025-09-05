@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { connectDB } from '@/lib/db';
 import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
+import { User } from '@/models/user';
 import { z } from 'zod';
 
 const createSessionSchema = z.object({
@@ -92,6 +93,40 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    // Update user stats
+    try {
+      console.log('🔍 Updating user stats...');
+      const updateData: any = {
+        $inc: { 'stats.totalSessions': 1 },
+        $set: { 'stats.lastSessionDate': new Date() }
+      };
+
+      // Add language to languagesUsed if not already present
+      if (!user.stats.languagesUsed.includes(language)) {
+        updateData.$addToSet = { 'stats.languagesUsed': language };
+      }
+
+      // Add mode to modesUsed if not already present
+      if (!user.stats.modesUsed.includes(mode)) {
+        if (updateData.$addToSet) {
+          updateData.$addToSet['stats.modesUsed'] = mode;
+        } else {
+          updateData.$addToSet = { 'stats.modesUsed': mode };
+        }
+      }
+
+      // Set firstSessionDate if this is the first session
+      if (!user.stats.firstSessionDate) {
+        updateData.$set['stats.firstSessionDate'] = new Date();
+      }
+
+      await User.findByIdAndUpdate(user._id, updateData);
+      console.log('✅ User stats updated successfully');
+    } catch (statsError) {
+      console.error('❌ Failed to update user stats:', statsError);
+      // Don't fail the session creation if stats update fails
+    }
+
     const response = {
       id: session._id,
       mode: session.mode,
@@ -142,7 +177,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50'); // Increased limit to show more sessions
+    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased limit to show all sessions
     const skip = (page - 1) * limit;
     const debug = searchParams.get('debug') === 'true';
 

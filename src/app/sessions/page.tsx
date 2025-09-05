@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
+import { useSessions } from '@/hooks/useSessions';
 import { Calendar, Clock, MessageSquare, Filter, Search, Trash2, MoreVertical, Eye, Play, Wrench } from 'lucide-react';
 
 interface Session {
@@ -23,8 +24,7 @@ interface Session {
 export default function AllSessionsPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { sessions, loading, stats, refreshSessions } = useSessions();
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<'all' | 'en' | 'hi' | 'mr'>('all');
   const [modeFilter, setModeFilter] = useState<'all' | 'text' | 'voice'>('all');
@@ -41,41 +41,8 @@ export default function AllSessionsPage() {
       router.push('/sign-in');
       return;
     }
+  }, [user, isLoaded, router]);
 
-    fetchSessions();
-  }, [user, isLoaded, currentPage, languageFilter, modeFilter, debugMode]);
-
-  const fetchSessions = async () => {
-    try {
-      setLoading(true);
-      console.log('🔍 Fetching sessions...');
-      const url = debugMode ? '/api/session?limit=50&debug=true' : '/api/session?limit=50';
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Sessions fetched:', data);
-        setSessions(data.sessions || []);
-        setTotalPages(Math.ceil((data.sessions?.length || 0) / sessionsPerPage));
-        
-        // Log session details for debugging
-        console.log('📅 All sessions:', data.sessions?.map((s: any) => ({
-          id: s._id,
-          userId: s.userId,
-          startedAt: s.startedAt,
-          completedAt: s.completedAt,
-          summary: s.summary ? 'Has summary' : 'No summary',
-          language: s.language,
-          mode: s.mode
-        })));
-      } else {
-        console.error('Failed to fetch sessions');
-      }
-    } catch (error) {
-      console.error('Error fetching sessions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fixSessionSummary = async (sessionId: string) => {
     try {
@@ -91,7 +58,7 @@ export default function AllSessionsPage() {
         const result = await response.json();
         console.log('Summary fixed:', result);
         // Refresh the sessions list
-        await fetchSessions();
+        refreshSessions();
         alert('Session summary has been fixed!');
       } else {
         console.error('Failed to fix summary');
@@ -129,7 +96,7 @@ export default function AllSessionsPage() {
         const result = await response.json();
         console.log('✅ Session deleted successfully:', result);
         // Refresh the sessions list
-        await fetchSessions();
+        refreshSessions();
         alert(`✅ Session deleted successfully!\n\nDeleted ${result.deletedMessagesCount} messages.`);
       } else {
         const errorData = await response.json();
@@ -241,12 +208,23 @@ export default function AllSessionsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            All Sessions
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View and manage all your mental wellness conversations
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                All Sessions
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                View and manage all your mental wellness conversations
+              </p>
+            </div>
+            <Button 
+              onClick={refreshSessions}
+              variant="outline"
+              className="px-4 py-2 text-sm font-medium rounded-lg border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            >
+              🔄 Refresh Sessions
+            </Button>
+          </div>
         </div>
 
                  {/* Stats */}
@@ -256,7 +234,7 @@ export default function AllSessionsPage() {
                <div className="flex items-center justify-between">
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Sessions</p>
-                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{sessions.length}</p>
+                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSessions}</p>
                  </div>
                  <Calendar className="h-8 w-8 text-blue-600" />
                </div>
@@ -269,7 +247,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Text Sessions</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {sessions.filter(s => s.mode === 'text').length}
+                     {stats.textSessions}
                    </p>
                  </div>
                  <MessageSquare className="h-8 w-8 text-green-600" />
@@ -283,7 +261,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Voice Sessions</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {sessions.filter(s => s.mode === 'voice').length}
+                     {stats.voiceSessions}
                    </p>
                  </div>
                  <Clock className="h-8 w-8 text-purple-600" />
@@ -297,7 +275,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Messages</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)}
+                     {stats.totalMessages}
                    </p>
                  </div>
                  <MessageSquare className="h-8 w-8 text-orange-600" />

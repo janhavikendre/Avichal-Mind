@@ -6,6 +6,7 @@ import { Session } from '@/models/session';
 import { Message } from '@/models/message';
 import { AIService } from '@/services/ai';
 import { youtubeService } from '@/lib/youtube';
+import { crisisVideoService } from '@/lib/crisis-video-service';
 import { gamificationService } from '@/lib/gamification';
 
 export async function POST(
@@ -47,11 +48,11 @@ export async function POST(
         content: msg.contentText
       })));
 
-    // Check for crisis content
-    const hasCrisisContent = await AIService.detectCrisisContent(content);
+    // Check for crisis content using enhanced detection
+    const crisisDetection = await AIService.detectMentalBreakdown(content, conversationHistory);
 
-    if (hasCrisisContent) {
-      // Update session with crisis flag
+    if (crisisDetection.isCrisis && crisisDetection.crisisType === 'suicidal') {
+      // Update session with crisis flag for suicidal ideation
       session.safetyFlags.crisis = true;
       await session.save();
 
@@ -80,25 +81,54 @@ export async function POST(
       conversationHistory
     );
     
-    // Only get video suggestions if the AI service indicates it's appropriate
+    // Get video suggestions based on response type
     let videoSuggestions: any[] = [];
     let enhancedResponse = aiResponse.text;
     
+    console.log('AI Response shouldSuggestVideos:', aiResponse.shouldSuggestVideos);
+    console.log('AI Response isCrisisResponse:', aiResponse.isCrisisResponse);
+    console.log('AI Response crisisType:', aiResponse.crisisType);
+    
     if (aiResponse.shouldSuggestVideos) {
       try {
-        // Create conversation context for video search
-        const conversationContext = `${content} ${aiResponse.text}`;
-        videoSuggestions = await youtubeService.getRelevantVideos(conversationContext, session.language);
-        
-        // Enhance AI response to naturally mention the videos
-        if (videoSuggestions.length > 0) {
-          const videoMention = session.language === 'hi' 
-            ? `\n\nमैंने आपके लिए कुछ उपयोगी वीडियो भी ढूंढे हैं जो आपकी मदद कर सकते हैं। नीचे दिए गए वीडियो देखें और कुछ देर आराम करें।`
-            : session.language === 'mr'
-            ? `\n\nमी तुमच्यासाठी काही उपयुक्त व्हिडिओ शोधले आहेत जे तुमची मदत करू शकतात. खाली दिलेले व्हिडिओ बघा आणि थोडा वेळ विश्रांती घ्या.`
-            : `\n\nI've also found some helpful videos that might be useful for you. Take a look at the videos below and take a breather.`;
+        if (aiResponse.isCrisisResponse && aiResponse.crisisType) {
+          // Get crisis-specific videos
+          const crisisVideoResponse = await crisisVideoService.getCrisisVideos(
+            aiResponse.crisisType,
+            session.language,
+            3
+          );
           
-          enhancedResponse = aiResponse.text + videoMention;
+          videoSuggestions = crisisVideoResponse.videos;
+          console.log('Crisis videos found:', videoSuggestions.length);
+          
+          // Add crisis support message
+          if (videoSuggestions.length > 0) {
+            const crisisVideoMention = session.language === 'hi' 
+              ? `\n\nमैंने आपके लिए तत्काल सहायता के लिए कुछ विशेष वीडियो ढूंढे हैं। कृपया इन वीडियो को देखें और तुरंत समर्थन लें।`
+              : session.language === 'mr'
+              ? `\n\nमी तुमच्यासाठी त्वरित सहाय्यासाठी काही विशेष व्हिडिओ शोधले आहेत. कृपया हे व्हिडिओ बघा आणि त्वरित समर्थन घ्या.`
+              : `\n\nI've found some special videos for immediate support. Please watch these videos and reach out for immediate help.`;
+            
+            enhancedResponse = aiResponse.text + crisisVideoMention;
+          }
+        } else {
+          // Get regular wellness videos
+          const conversationContext = `${content} ${aiResponse.text}`;
+          console.log('Getting regular videos for context:', conversationContext);
+          videoSuggestions = await youtubeService.getRelevantVideos(conversationContext, session.language);
+          console.log('Regular videos found:', videoSuggestions.length);
+          
+          // Enhance AI response to naturally mention the videos
+          if (videoSuggestions.length > 0) {
+            const videoMention = session.language === 'hi' 
+              ? `\n\nमैंने आपके लिए कुछ उपयोगी वीडियो भी ढूंढे हैं जो आपकी मदद कर सकते हैं। नीचे दिए गए वीडियो देखें और कुछ देर आराम करें।`
+              : session.language === 'mr'
+              ? `\n\nमी तुमच्यासाठी काही उपयुक्त व्हिडिओ शोधले आहेत जे तुमची मदत करू शकतात. खाली दिलेले व्हिडिओ बघा आणि थोडा वेळ विश्रांती घ्या.`
+              : `\n\nI've also found some helpful videos that might be useful for you. Take a look at the videos below and take a breather.`;
+            
+            enhancedResponse = aiResponse.text + videoMention;
+          }
         }
       } catch (error) {
         console.error('Error getting video suggestions:', error);
@@ -124,6 +154,7 @@ export async function POST(
 
     // Update user gamification stats - only message-related stats
     user.stats.totalMessages = (user.stats.totalMessages || 0) + 2; // +2 for user message + AI response
+    user.stats.lastSessionDate = new Date();
     
     await user.save();
 

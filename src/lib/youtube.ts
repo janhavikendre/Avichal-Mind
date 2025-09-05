@@ -12,6 +12,8 @@ export class YouTubeService {
       return [];
     }
 
+    console.log('YouTube API: Searching for videos with query:', query);
+
     try {
       // Clean and enhance the query for better video search
       const enhancedQuery = this.enhanceQuery(query);
@@ -34,7 +36,10 @@ export class YouTubeService {
 
       const data = await response.json();
       
+      console.log('YouTube API: Received response with', data.items?.length || 0, 'videos');
+      
       if (!data.items || data.items.length === 0) {
+        console.log('YouTube API: No videos found for query:', enhancedQuery);
         return [];
       }
 
