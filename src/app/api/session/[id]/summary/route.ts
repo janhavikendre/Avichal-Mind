@@ -1,24 +1,45 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectDB } from '@/lib/db';
 import { Session as SessionModel } from '@/models/session';
 import { Message as MessageModel } from '@/models/message';
+import { User } from '@/models/user';
 import { geminiService } from '@/lib/gemini';
 
 export async function POST(
-  _req: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const body = await request.json();
+    const { phoneUserId } = body;
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
+
+    let user;
+    if (userId) {
+      // For Clerk users, we don't need to fetch the user here
+      user = { _id: 'clerk_user' };
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
+
     const sessionId = params.id;
 
-    const session = await SessionModel.findById(sessionId);
+    const session = await SessionModel.findOne({
+      _id: sessionId,
+      userId: user._id
+    });
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }

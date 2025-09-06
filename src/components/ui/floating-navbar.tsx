@@ -5,12 +5,23 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
+import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 
 interface FloatingNavbarProps {
   className?: string;
 }
 
 export function FloatingNavbar({ className }: FloatingNavbarProps) {
+  const { phoneUser, isPhoneUser, clearPhoneUser } = usePhoneUser();
+  const router = useRouter();
+
+  const handlePhoneUserLogout = () => {
+    clearPhoneUser();
+    router.push('/');
+  };
+
   return (
     <motion.div
       initial={{ y: -100, opacity: 0 }}
@@ -34,20 +45,26 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
         <div className="flex items-center space-x-1 sm:space-x-2 ml-2 sm:ml-4">
           <ThemeToggle />
           
+          {/* Show sign in/up buttons only if neither Clerk user nor phone user is logged in */}
           <SignedOut>
-            <SignInButton mode="modal">
-              <Button variant="ghost" size="sm" className="hidden sm:block text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 text-xs sm:text-sm">
-                Sign In
-              </Button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs sm:text-sm px-2 sm:px-3">
-                <span className="hidden sm:inline">Get Started</span>
-                <span className="sm:hidden">Start</span>
-              </Button>
-            </SignUpButton>
+            {!isPhoneUser && (
+              <>
+                <SignInButton mode="modal">
+                  <Button variant="ghost" size="sm" className="hidden sm:block text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 text-xs sm:text-sm">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs sm:text-sm px-2 sm:px-3">
+                    <span className="hidden sm:inline">Get Started</span>
+                    <span className="sm:hidden">Start</span>
+                  </Button>
+                </SignUpButton>
+              </>
+            )}
           </SignedOut>
           
+          {/* Show Clerk UserButton if Clerk user is signed in */}
           <SignedIn>
             <UserButton 
               appearance={{
@@ -58,6 +75,29 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               }}
             />
           </SignedIn>
+          
+          {/* Show phone user info if phone user is logged in */}
+          {isPhoneUser && phoneUser && (
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">
+                  {phoneUser.firstName?.charAt(0) || 'P'}
+                </span>
+              </div>
+              <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {phoneUser.firstName} {phoneUser.lastName}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePhoneUserLogout}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

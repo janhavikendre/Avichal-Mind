@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,7 @@ interface Achievement {
 
 export default function GamificationPage() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const router = useRouter();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -72,9 +74,9 @@ export default function GamificationPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'badges' | 'achievements'>('overview');
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || phoneUserLoading) return;
     
-    if (!user) {
+    if (!user && !isPhoneUser) {
       router.push('/sign-in');
       return;
     }
@@ -83,17 +85,49 @@ export default function GamificationPage() {
     
     // Also check daily streak when page loads
     checkDailyStreak();
-  }, [user, isLoaded]);
+  }, [user, isLoaded, isPhoneUser, phoneUserLoading]);
 
   const fetchGamificationData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/gamification');
+      
+      // Build API URL with phone user ID if needed
+      let apiUrl = '/api/gamification';
+      if (isPhoneUser && phoneUser) {
+        apiUrl += `?phoneUserId=${phoneUser._id}`;
+      }
+      
+      console.log('Fetching gamification data from:', apiUrl);
+      const response = await fetch(apiUrl);
+      
       if (response.ok) {
         const data = await response.json();
-        setUserProgress(data.progress);
-        setBadges(data.badges);
-        setAchievements(data.achievements);
+        console.log('Gamification data received:', data);
+        console.log('Progress data:', data.progress);
+        console.log('Badges data:', data.badges);
+        console.log('Achievements data:', data.achievements);
+        
+        if (data.progress) {
+          setUserProgress(data.progress);
+        } else {
+          console.warn('No progress data received');
+        }
+        
+        if (data.badges) {
+          setBadges(data.badges);
+        } else {
+          console.warn('No badges data received');
+        }
+        
+        if (data.achievements) {
+          setAchievements(data.achievements);
+        } else {
+          console.warn('No achievements data received');
+        }
+      } else {
+        console.error('Failed to fetch gamification data:', response.status, response.statusText);
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
       }
     } catch (error) {
       console.error('Error fetching gamification data:', error);
@@ -104,7 +138,13 @@ export default function GamificationPage() {
 
   const refreshStreak = async () => {
     try {
-      const response = await fetch('/api/streak/refresh', { method: 'POST' });
+      // Build API URL with phone user ID if needed
+      let apiUrl = '/api/streak/refresh';
+      if (isPhoneUser && phoneUser) {
+        apiUrl += `?phoneUserId=${phoneUser._id}`;
+      }
+      
+      const response = await fetch(apiUrl, { method: 'POST' });
       if (response.ok) {
         const data = await response.json();
         console.log('Streak refreshed:', data);
@@ -118,7 +158,13 @@ export default function GamificationPage() {
 
   const checkDailyStreak = async () => {
     try {
-      const response = await fetch('/api/streak/daily');
+      // Build API URL with phone user ID if needed
+      let apiUrl = '/api/streak/daily';
+      if (isPhoneUser && phoneUser) {
+        apiUrl += `?phoneUserId=${phoneUser._id}`;
+      }
+      
+      const response = await fetch(apiUrl);
       if (response.ok) {
         const data = await response.json();
         console.log('Daily streak check:', data);
@@ -154,7 +200,7 @@ export default function GamificationPage() {
     }
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || phoneUserLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <FloatingNavbar />
@@ -168,8 +214,24 @@ export default function GamificationPage() {
     );
   }
 
-  if (!user) {
-    return null;
+  if (!user && !isPhoneUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <FloatingNavbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Please sign in to view achievements</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Sign in to access your gamification progress and achievements.</p>
+            <button 
+              onClick={() => router.push('/sign-in')} 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

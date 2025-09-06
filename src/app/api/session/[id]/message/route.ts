@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
 import { Message } from '@/models/message';
+import { User } from '@/models/user';
 import { AIService } from '@/services/ai';
 import { youtubeService } from '@/lib/youtube';
 import { CrisisVideoService } from '@/lib/crisis-video-service';
@@ -15,12 +16,31 @@ export async function POST(
 ) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const body = await request.json();
+    const { phoneUserId, content, isAudio = false } = body;
+
+    console.log('Message API received:', { userId, phoneUserId, content, isAudio });
+    console.log('Request body:', body);
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
+      console.log('Unauthorized: No userId or phoneUserId');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
-    const user = await getOrCreateUser(userId);
+
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
     // Verify session belongs to user
     const session = await Session.findOne({
@@ -31,9 +51,6 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
-
-    const body = await request.json();
-    const { content, isAudio = false } = body;
 
     if (!content) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });

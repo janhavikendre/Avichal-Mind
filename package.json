@@ -25,6 +25,7 @@
     "@tabler/icons-react": "^3.34.1",
     "@tanstack/react-query": "^4.40.1",
     "@tanstack/react-query-devtools": "^4.40.1",
+    "@types/twilio": "^3.19.3",
     "aws-sdk": "^2.1500.0",
     "axios": "^1.6.0",
     "class-variance-authority": "^0.7.0",
@@ -49,6 +50,7 @@
     "react-hot-toast": "^2.4.1",
     "svix": "^1.0.0",
     "tailwind-merge": "^2.6.0",
+    "twilio": "^5.9.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {

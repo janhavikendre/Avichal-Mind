@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,7 @@ export default function ContinueSessionPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const [session, setSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,10 +50,10 @@ export default function ContinueSessionPage() {
   const sessionId = params.id as string;
 
   useEffect(() => {
-    if (isLoaded && user) {
+    if ((isLoaded || phoneUserLoading === false) && (user || isPhoneUser)) {
       loadSession();
     }
-  }, [isLoaded, user, sessionId]);
+  }, [isLoaded, user, phoneUserLoading, isPhoneUser, sessionId]);
 
   // Cleanup effect to stop speech synthesis when component unmounts
   useEffect(() => {
@@ -85,8 +87,14 @@ export default function ContinueSessionPage() {
       setIsLoading(true);
       setError(null);
 
+      // Build API URL with phone user ID if needed
+      let apiUrl = `/api/session/${sessionId}`;
+      if (isPhoneUser && phoneUser) {
+        apiUrl += `?phoneUserId=${phoneUser._id}`;
+      }
+
       // Load session details
-      const sessionResponse = await fetch(`/api/session/${sessionId}`);
+      const sessionResponse = await fetch(apiUrl);
       if (!sessionResponse.ok) {
         throw new Error('Session not found');
       }
@@ -114,7 +122,7 @@ export default function ContinueSessionPage() {
     setMessages(prev => [...prev, message]);
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || phoneUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -125,7 +133,7 @@ export default function ContinueSessionPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isPhoneUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -343,7 +351,7 @@ export default function ContinueSessionPage() {
             language={session.language}
             onMessageSent={handleMessageSent}
             isContinueSession={true}
-            user={user}
+            user={phoneUser || user}
             isSidebarVisible={sidebarOpen}
           />
         </div>

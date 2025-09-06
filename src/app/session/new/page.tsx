@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import { toast } from 'react-hot-toast';
 
 export default function NewSessionPage() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [selectedMode, setSelectedMode] = useState<'text' | 'voice'>('text');
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi' | 'mr'>('en');
 
-  if (!isLoaded) {
+  if (!isLoaded || phoneUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -26,7 +28,7 @@ export default function NewSessionPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isPhoneUser) {
     router.push('/sign-in');
     return null;
   }
@@ -42,6 +44,7 @@ export default function NewSessionPage() {
         body: JSON.stringify({
           mode: selectedMode,
           language: selectedLanguage,
+          ...(isPhoneUser && phoneUser ? { phoneUserId: phoneUser._id } : {}),
         }),
       });
 

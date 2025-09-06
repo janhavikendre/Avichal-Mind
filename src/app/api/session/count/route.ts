@@ -3,16 +3,32 @@ import { auth } from '@clerk/nextjs/server';
 import { connectDB } from '@/lib/db';
 import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
+import { User } from '@/models/user';
 
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const { searchParams } = new URL(request.url);
+    const phoneUserId = searchParams.get('phoneUserId');
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
-    const user = await getOrCreateUser(userId);
+
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
     // Get total session count
     const totalSessions = await Session.countDocuments({ userId: user._id });

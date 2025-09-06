@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from './usePhoneUser';
 
 interface Session {
   _id: string;
@@ -18,21 +19,32 @@ interface Session {
 
 export function useSessions() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
-    if (!isLoaded || !user) return;
+    // Don't fetch if still loading or no user is authenticated
+    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) return;
 
     try {
       setLoading(true);
       setError(null);
       
+      // Build URLs with phoneUserId if it's a phone user
+      const sessionUrl = isPhoneUser && phoneUser 
+        ? `/api/session?phoneUserId=${phoneUser._id}`
+        : '/api/session';
+      
+      const countUrl = isPhoneUser && phoneUser 
+        ? `/api/session/count?phoneUserId=${phoneUser._id}`
+        : '/api/session/count';
+      
       // Fetch both sessions and counts in parallel
       const [sessionsResponse, countsResponse] = await Promise.all([
-        fetch('/api/session'),
-        fetch('/api/session/count')
+        fetch(sessionUrl),
+        fetch(countUrl)
       ]);
 
       if (sessionsResponse.ok && countsResponse.ok) {
@@ -55,7 +67,7 @@ export function useSessions() {
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, phoneUserLoading, isPhoneUser]);
 
   const refreshSessions = useCallback(() => {
     fetchSessions();
@@ -77,7 +89,7 @@ export function useSessions() {
 
   // Auto-refresh every 30 seconds when page is visible
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) return;
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -86,7 +98,7 @@ export function useSessions() {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [fetchSessions, isLoaded, user]);
+  }, [fetchSessions, isLoaded, user, phoneUserLoading, isPhoneUser]);
 
   // Calculate stats
   const stats = {

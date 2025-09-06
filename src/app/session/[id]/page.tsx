@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import { toast } from 'react-hot-toast';
 import { formatDate } from '@/lib/utils';
 import { ArrowLeft, MessageCircle, Mic, Clock, Play, Pause, ChevronDown } from 'lucide-react';
@@ -36,6 +37,7 @@ interface Session {
 
 export default function SessionPage() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as string;
@@ -49,15 +51,21 @@ export default function SessionPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && (isLoaded || phoneUserLoading === false) && (user || isPhoneUser)) {
       setIsLoading(true);
       fetchSession();
     }
-  }, [sessionId]);
+  }, [sessionId, isLoaded, user, phoneUserLoading, isPhoneUser]);
 
   const fetchSession = async () => {
     try {
-      const response = await fetch(`/api/session/${sessionId}`);
+      // Build API URL with phone user ID if needed
+      let apiUrl = `/api/session/${sessionId}`;
+      if (isPhoneUser && phoneUser) {
+        apiUrl += `?phoneUserId=${phoneUser._id}`;
+      }
+
+      const response = await fetch(apiUrl);
       if (response.ok) {
         const data = await response.json();
         setSession(data.session);
@@ -113,7 +121,7 @@ export default function SessionPage() {
     }
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || phoneUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -124,7 +132,7 @@ export default function SessionPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isPhoneUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">

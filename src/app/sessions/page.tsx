@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ interface Session {
 
 export default function AllSessionsPage() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const router = useRouter();
   const { sessions, loading, stats, refreshSessions } = useSessions();
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,13 +42,13 @@ export default function AllSessionsPage() {
   const sessionsPerPage = 10;
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || phoneUserLoading) return;
     
-    if (!user) {
+    if (!user && !isPhoneUser) {
       router.push('/sign-in');
       return;
     }
-  }, [user, isLoaded, router]);
+  }, [user, isLoaded, isPhoneUser, phoneUserLoading, router]);
 
 
   const fixSessionSummary = async (sessionId: string) => {
@@ -205,7 +207,7 @@ export default function AllSessionsPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isPhoneUser) {
     return null;
   }
 

@@ -10,6 +10,7 @@ import { AnimatedCard } from '@/components/ui/animated-card';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
 import { formatDate } from '@/lib/utils';
 import { useSessions } from '@/hooks/useSessions';
+import { usePhoneUser } from '@/hooks/usePhoneUser';
 import Link from 'next/link';
 
 interface Session {
@@ -29,6 +30,7 @@ interface Session {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const { sessions, loading, stats, refreshSessions } = useSessions();
 
   useEffect(() => {
@@ -58,7 +60,8 @@ export default function DashboardPage() {
   };
 
 
-  if (!isLoaded) {
+  // Show loading if either Clerk or phone user is still loading
+  if (!isLoaded || phoneUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -69,7 +72,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
+  // If no user is authenticated (neither Clerk nor phone user)
+  if (!user && !isPhoneUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center max-w-md mx-auto px-4">
@@ -98,7 +102,7 @@ export default function DashboardPage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium mb-6">
             <span className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
-            Welcome back, {user.firstName}!
+            Welcome back, {user ? user.firstName : phoneUser?.firstName || 'User'}!
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
             Your Wellness Dashboard

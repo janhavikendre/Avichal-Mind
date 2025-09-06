@@ -47,6 +47,10 @@ export default function ChatInterface({
   user,
   isSidebarVisible = true // Default to true if not provided
 }: ChatInterfaceProps) {
+  // Debug logging
+  console.log('ChatInterface received user:', user);
+  console.log('User type:', user?.userType);
+  console.log('User ID:', user?._id);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -286,7 +290,10 @@ export default function ChatInterface({
       await fetch(`/api/session/${sessionId}/summary`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language }),
+        body: JSON.stringify({ 
+          language,
+          ...(user && user.userType === 'phone' ? { phoneUserId: user._id } : {})
+        }),
         keepalive: true
       });
     } catch (_) {
@@ -296,7 +303,13 @@ export default function ChatInterface({
 
   const loadMessages = async () => {
     try {
-      const response = await fetch(`/api/session/${sessionId}`);
+      // Build API URL with phone user ID if needed
+      let apiUrl = `/api/session/${sessionId}`;
+      if (user && user.userType === 'phone') {
+        apiUrl += `?phoneUserId=${user._id}`;
+      }
+      
+      const response = await fetch(apiUrl);
       if (response.ok) {
         const data = await response.json();
         setMessages(data.messages || []);
@@ -343,15 +356,21 @@ export default function ChatInterface({
     setMessages(prev => [...prev, tempUserMessage]);
 
     try {
+      const requestBody = {
+        content: userMessage,
+        isAudio: false,
+        ...(user && user.userType === 'phone' ? { phoneUserId: user._id } : {}),
+      };
+      
+      console.log('Sending message with body:', requestBody);
+      console.log('User check:', { user, userType: user?.userType, userId: user?._id });
+      
       const response = await fetch(`/api/session/${sessionId}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          content: userMessage,
-          isAudio: false,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {

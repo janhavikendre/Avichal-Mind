@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { getOrCreateUser } from '@/lib/auth';
 import { Session } from '@/models/session';
 import { Message } from '@/models/message';
+import { User } from '@/models/user';
 import { maskPII } from '@/lib/utils';
 import { gamificationService } from '@/lib/gamification';
 import { AIService } from '@/services/ai';
@@ -14,18 +15,32 @@ export async function GET(
 ) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const { searchParams } = new URL(request.url);
+    const phoneUserId = searchParams.get('phoneUserId');
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
 
-    const user = await getOrCreateUser(userId);
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
     const session = await Session.findOne({
       _id: params.id,
       userId: user._id,
-    }).populate('userId', 'name email');
+    }).populate('userId', 'firstName lastName email phoneNumber userType');
 
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
@@ -71,13 +86,27 @@ export async function POST(
 ) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const { searchParams } = new URL(request.url);
+    const phoneUserId = searchParams.get('phoneUserId');
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
 
-    const user = await getOrCreateUser(userId);
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
     const session = await Session.findOne({
       _id: params.id,
@@ -204,13 +233,27 @@ export async function DELETE(
 ) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const { searchParams } = new URL(request.url);
+    const phoneUserId = searchParams.get('phoneUserId');
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
 
-    const user = await getOrCreateUser(userId);
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
     // Find the session and verify ownership
     const session = await Session.findOne({

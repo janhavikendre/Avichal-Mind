@@ -19,10 +19,15 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Environment check - CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
     
     const { userId } = await auth();
-    console.log('🔍 Clerk userId in POST /api/session:', userId);
+    const body = await request.json();
+    const { phoneUserId } = body;
     
-    if (!userId) {
-      console.log('❌ No userId from auth() - returning 401');
+    console.log('🔍 Clerk userId in POST /api/session:', userId);
+    console.log('🔍 Phone userId in POST /api/session:', phoneUserId);
+    
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
+      console.log('❌ No userId from auth() or phoneUserId - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -39,17 +44,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create user
-    console.log('🔍 Getting or creating user with clerkUserId:', userId);
     let user;
-    try {
-      user = await getOrCreateUser(userId);
-      console.log('✅ User found/created:', user ? user._id : 'null');
-    } catch (userError) {
-      console.error('❌ User creation/fetch failed:', userError);
-      return NextResponse.json({ 
-        error: 'User authentication failed',
-        details: process.env.NODE_ENV === 'development' ? (userError as Error).message : undefined
-      }, { status: 500 });
+    if (userId) {
+      // Clerk user
+      console.log('🔍 Getting or creating Clerk user with clerkUserId:', userId);
+      try {
+        user = await getOrCreateUser(userId);
+        console.log('✅ Clerk user found/created:', user ? user._id : 'null');
+      } catch (userError) {
+        console.error('❌ Clerk user creation/fetch failed:', userError);
+        return NextResponse.json({ 
+          error: 'User authentication failed',
+          details: process.env.NODE_ENV === 'development' ? (userError as Error).message : undefined
+        }, { status: 500 });
+      }
+    } else if (phoneUserId) {
+      // Phone user
+      console.log('🔍 Getting phone user with userId:', phoneUserId);
+      try {
+        user = await User.findById(phoneUserId);
+        if (!user) {
+          console.log('❌ Phone user not found');
+          return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+        }
+        console.log('✅ Phone user found:', user._id);
+      } catch (userError) {
+        console.error('❌ Phone user fetch failed:', userError);
+        return NextResponse.json({ 
+          error: 'Phone user authentication failed',
+          details: process.env.NODE_ENV === 'development' ? (userError as Error).message : undefined
+        }, { status: 500 });
+      }
     }
 
     if (!user) {
@@ -57,9 +82,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const body = await request.json();
-    console.log('🔍 Request body:', body);
-    
     let validatedData;
     try {
       validatedData = createSessionSchema.parse(body);
@@ -167,15 +189,28 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    if (!userId) {
+    const { searchParams } = new URL(request.url);
+    const phoneUserId = searchParams.get('phoneUserId');
+
+    // Check if user is authenticated (either Clerk or phone user)
+    if (!userId && !phoneUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
 
-    const user = await getOrCreateUser(userId);
+    let user;
+    if (userId) {
+      // Clerk user
+      user = await getOrCreateUser(userId);
+    } else if (phoneUserId) {
+      // Phone user
+      user = await User.findById(phoneUserId);
+      if (!user) {
+        return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
+      }
+    }
 
-    const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '1000'); // Increased limit to show all sessions
     const skip = (page - 1) * limit;
