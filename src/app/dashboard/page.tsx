@@ -72,8 +72,11 @@ export default function DashboardPage() {
     );
   }
 
-  // If no user is authenticated (neither Clerk nor phone user)
-  if (!user && !isPhoneUser) {
+  // Prioritize phone user - if phone user exists, use them regardless of Clerk status
+  if (isPhoneUser && phoneUser) {
+    console.log('🎯 Dashboard: Using phone user:', phoneUser.firstName);
+    // Continue to render dashboard with phone user
+  } else if (!user && !isPhoneUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center max-w-md mx-auto px-4">
@@ -102,7 +105,7 @@ export default function DashboardPage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium mb-6">
             <span className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
-            Welcome back, {user ? user.firstName : phoneUser?.firstName || 'User'}!
+            Welcome back, {isPhoneUser && phoneUser ? phoneUser.firstName : user?.firstName || 'User'}!
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
             Your Wellness Dashboard

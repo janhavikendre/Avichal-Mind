@@ -111,6 +111,17 @@ export function PhoneInput({ className }: PhoneInputProps) {
       // Store phone user data in localStorage for session access
       if (data.user) {
         localStorage.setItem('phoneUser', JSON.stringify(data.user));
+        console.log('🎯 PhoneInput: Stored phone user in localStorage:', data.user.firstName);
+      }
+
+      // Clear any existing Clerk session to prevent conflicts
+      try {
+        // Clear Clerk session data from localStorage
+        localStorage.removeItem('__clerk_client_jwt');
+        localStorage.removeItem('__clerk_db_jwt');
+        console.log('🎯 PhoneInput: Cleared Clerk session data');
+      } catch (error) {
+        console.log('Note: Could not clear Clerk session data:', error);
       }
 
       // Redirect to dashboard like Clerk users

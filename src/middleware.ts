@@ -1,6 +1,12 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
-export default clerkMiddleware();
+export default clerkMiddleware({
+  // Don't automatically redirect phone users
+  signInUrl: '/sign-in',
+  signUpUrl: '/sign-up',
+  afterSignInUrl: '/dashboard',
+  afterSignUpUrl: '/dashboard',
+});
 
 export const config = {
   matcher: [
