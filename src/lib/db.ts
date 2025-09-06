@@ -12,11 +12,12 @@ interface Connection {
 
 const connection: Connection = {};
 
-async function connectDB() {
+async function connectDB(retryCount = 0, maxRetries = 3) {
   console.log('🔍 Database connection state:', connection.isConnected);
   console.log('🔍 MONGODB_URI:', MONGODB_URI ? 'Set' : 'Not set');
   console.log('🔍 MONGODB_URI preview:', MONGODB_URI ? MONGODB_URI.substring(0, 20) + '...' : 'Not set');
   console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔍 Retry attempt:', retryCount + 1, 'of', maxRetries + 1);
   
   if (connection.isConnected) {
     console.log('✅ Already connected to database');
@@ -26,12 +27,19 @@ async function connectDB() {
   try {
     console.log('🔍 Connecting to MongoDB...');
     
-    // Add connection options for better error handling
+    // Add connection options for better error handling and retry logic
     const options = {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000, // Increased from 5000
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000, // Add connection timeout
+      retryWrites: true,
+      retryReads: true,
+      maxIdleTimeMS: 30000,
     };
+    
+    // Set mongoose-specific options
+    mongoose.set('bufferCommands', false);
     
     const db = await mongoose.connect(MONGODB_URI, options);
     connection.isConnected = db.connections[0].readyState;
@@ -59,6 +67,18 @@ async function connectDB() {
     // Reset connection state
     connection.isConnected = 0;
     
+    // Retry logic for network errors
+    if (retryCount < maxRetries && (
+      (error as any).name === 'MongoNetworkError' ||
+      (error as any).name === 'MongoServerSelectionError' ||
+      (error as any).code === 'ETIMEOUT' ||
+      (error as Error).message.includes('ETIMEOUT')
+    )) {
+      console.log(`🔄 Retrying connection in ${(retryCount + 1) * 2} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+      return connectDB(retryCount + 1, maxRetries);
+    }
+    
     // Provide specific error messages for common issues
     if ((error as any).name === 'MongoNetworkError') {
       throw new Error(`Network error connecting to MongoDB: ${(error as Error).message}. Please check your internet connection and MongoDB URI.`);
@@ -74,6 +94,10 @@ async function connectDB() {
     
     if ((error as any).code === 'ECONNREFUSED') {
       throw new Error(`Connection refused to MongoDB. Please check if MongoDB is running and the URI is correct: ${(error as Error).message}`);
+    }
+    
+    if ((error as any).code === 'ETIMEOUT' || (error as Error).message.includes('ETIMEOUT')) {
+      throw new Error(`MongoDB connection timeout. Please check your internet connection and try again: ${(error as Error).message}`);
     }
     
     throw error;

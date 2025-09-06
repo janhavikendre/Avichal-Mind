@@ -12,9 +12,24 @@ const client = twilio(
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
+    console.log('🔍 Call API: Starting request processing');
+    
+    // Try to connect to database with retry logic
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.error('❌ Database connection failed:', dbError);
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed. Please try again in a few moments.',
+          details: 'The database is temporarily unavailable. Please check your internet connection and try again.'
+        },
+        { status: 503 }
+      );
+    }
 
-    const { phoneNumber } = await request.json();
+    const { phoneNumber, userName } = await request.json();
+    console.log('🔍 Call API: Received data:', { phoneNumber: phoneNumber ? '***' + phoneNumber.slice(-4) : 'none', userName: userName || 'none' });
 
     if (!phoneNumber) {
       return NextResponse.json(
@@ -71,11 +86,15 @@ export async function POST(request: NextRequest) {
 
       if (!user) {
         // Create new user for phone access
+        const nameParts = userName ? userName.trim().split(' ') : ['Phone', 'User'];
+        const firstName = nameParts[0] || 'Phone';
+        const lastName = nameParts.slice(1).join(' ') || 'User';
+        
         user = new User({
           clerkUserId: undefined, // Don't set clerkUserId for phone users
           email: `phone_${cleanedPhone}@avichal-mind.com`,
-          firstName: 'Phone',
-          lastName: 'User',
+          firstName: firstName,
+          lastName: lastName,
           phoneNumber: formattedPhone,
           userType: 'phone',
           points: 0,
@@ -130,7 +149,7 @@ export async function POST(request: NextRequest) {
 
       // Check if it's a verification error (trial account limitation)
       if (callError.code === 21219) {
-        console.log('Phone number not verified. Creating session without call for trial account.');
+        console.log('✅ Phone number not verified. Creating session without call for trial account.');
 
         // Create a mock call SID for trial accounts
         const mockCallSid = `TRIAL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -150,6 +169,12 @@ export async function POST(request: NextRequest) {
           phoneNumber: formattedPhone
         });
         await session.save();
+
+        console.log('✅ Trial account session created successfully:', {
+          sessionId: session._id,
+          userId: user._id,
+          userName: `${user.firstName} ${user.lastName}`
+        });
 
         return NextResponse.json({
           success: true,
@@ -215,9 +240,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error initiating call:', error);
+    console.error('❌ Call API Error:', error);
     
     if (error instanceof Error) {
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      
       // Handle Twilio-specific errors
       if (error.message.includes('Invalid phone number')) {
         return NextResponse.json(
@@ -241,6 +271,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.error('❌ Returning generic error response');
     return NextResponse.json(
       { error: 'Failed to initiate call. Please try again.' },
       { status: 500 }

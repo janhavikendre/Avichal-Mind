@@ -40,47 +40,65 @@ export async function POST(request: NextRequest) {
 
     // Find or create user based on phone number
     const cleanedPhone = from.replace(/\D/g, '');
+    let formattedPhone;
+    
+    // Format phone number consistently with call API
+    if (cleanedPhone.startsWith('91')) {
+      formattedPhone = `+${cleanedPhone}`;
+    } else if (cleanedPhone.startsWith('1') && cleanedPhone.length === 11) {
+      formattedPhone = `+${cleanedPhone}`;
+    } else if (cleanedPhone.length === 10) {
+      if (cleanedPhone.match(/^[6-9]/)) {
+        formattedPhone = `+91${cleanedPhone}`;
+      } else {
+        formattedPhone = `+1${cleanedPhone}`;
+      }
+    } else {
+      formattedPhone = `+91${cleanedPhone}`;
+    }
+
+    console.log('🔍 Looking for user with phone:', formattedPhone);
+    
     let user = await User.findOne({ 
-      clerkUserId: { $regex: `^phone_${cleanedPhone}_` } 
+      phoneNumber: formattedPhone,
+      userType: 'phone'
     });
 
     if (!user) {
+      console.log('🔍 User not found, creating new phone user');
       // Create user if not found
-      const phoneUserId = `phone_${cleanedPhone}_${Date.now()}`;
       user = new User({
-        clerkUserId: phoneUserId,
+        clerkUserId: undefined, // Don't set clerkUserId for phone users
         email: `phone_${cleanedPhone}@avichal-mind.com`,
         firstName: 'Phone',
         lastName: 'User',
+        phoneNumber: formattedPhone,
+        userType: 'phone',
         points: 0,
         level: 1,
-        streak: {
-          current: 0,
-          longest: 0,
-          lastSessionDate: null
-        },
+        streak: 0,
         badges: [],
         achievements: [],
         stats: {
           totalSessions: 0,
           totalMessages: 0,
-          totalDuration: 0,
-          languagesUsed: [],
-          modesUsed: [],
-          firstSessionDate: null,
-          lastSessionDate: null
+          totalMinutes: 0,
+          crisisSessions: 0
         }
       });
       await user.save();
+      console.log('✅ Created new phone user:', user._id);
+    } else {
+      console.log('✅ Found existing phone user:', user._id);
     }
 
     // Create or find session for this call
     let session = await Session.findOne({ 
-      userId: user._id,
-      startedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Within last 24 hours
+      callSid: callSid
     });
 
     if (!session) {
+      console.log('🔍 Session not found for callSid:', callSid, 'creating new session');
       session = new Session({
         userId: user._id,
         mode: 'voice',
@@ -90,9 +108,14 @@ export async function POST(request: NextRequest) {
           crisis: false,
           pii: false
         },
-        messageCount: 0
+        messageCount: 0,
+        callSid: callSid,
+        phoneNumber: formattedPhone
       });
       await session.save();
+      console.log('✅ Created new session:', session._id);
+    } else {
+      console.log('✅ Found existing session:', session._id);
     }
 
     // Handle speech input
@@ -108,10 +131,11 @@ export async function POST(request: NextRequest) {
 
       // Generate AI response
       try {
+        const userName = user.firstName || 'there';
         const aiResponse = await AIService.generateResponse(
           speechResult, 
           'en', 
-          'Phone User',
+          userName,
           [] // No conversation history for voice calls
         );
         
@@ -176,10 +200,15 @@ export async function POST(request: NextRequest) {
 
     } else if (callStatus === 'in-progress') {
       // Initial greeting
+      const userName = user.firstName || 'there';
+      const greeting = `Hello ${userName}! This is Avichal Mind AI Wellness assistant. I'm here to provide compassionate mental health support. How are you feeling today?`;
+      
+      console.log('🎤 Playing greeting:', greeting);
+      
       twiml.say({
         voice: 'alice',
         language: 'en-US'
-      }, 'Hello! This is Avichal Mind AI Wellness assistant. I\'m here to provide compassionate mental health support. How are you feeling today?');
+      }, greeting);
 
       // Start listening for speech
       const gather = twiml.gather({
@@ -236,7 +265,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Voice webhook error:', error);
+    console.error('❌ Voice webhook error:', error);
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     
     const twiml = new VoiceResponse();
     twiml.say({
