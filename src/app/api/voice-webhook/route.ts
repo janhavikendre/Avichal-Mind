@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 
         // Continue listening for more input
         const gather = twiml.gather({
-          input: 'speech',
+          input: ['speech'],
           timeout: 10,
           speechTimeout: 'auto',
           action: '/api/voice-webhook',
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
         // Continue listening
         const gather = twiml.gather({
-          input: 'speech',
+          input: ['speech'],
           timeout: 10,
           speechTimeout: 'auto',
           action: '/api/voice-webhook',
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
 
       // Start listening for speech
       const gather = twiml.gather({
-        input: 'speech',
+        input: ['speech'],
         timeout: 10,
         speechTimeout: 'auto',
         action: '/api/voice-webhook',
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
 
       // Give another chance
       const retryGather = twiml.gather({
-        input: 'speech',
+        input: ['speech'],
         timeout: 10,
         speechTimeout: 'auto',
         action: '/api/voice-webhook',

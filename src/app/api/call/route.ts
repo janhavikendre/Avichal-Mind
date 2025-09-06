@@ -63,38 +63,31 @@ export async function POST(request: NextRequest) {
       user = await User.findOne({ clerkUserId: userId });
     } else {
       // Create a temporary user for phone-only access
-      // Generate a unique identifier for phone users
-      const phoneUserId = `phone_${cleanedPhone}_${Date.now()}`;
-      
-      // Check if phone user already exists
+      // Check if phone user already exists by phone number
       user = await User.findOne({ 
-        clerkUserId: { $regex: `^phone_${cleanedPhone}_` } 
+        phoneNumber: formattedPhone,
+        userType: 'phone'
       });
 
       if (!user) {
         // Create new user for phone access
         user = new User({
-          clerkUserId: phoneUserId,
+          clerkUserId: undefined, // Don't set clerkUserId for phone users
           email: `phone_${cleanedPhone}@avichal-mind.com`,
           firstName: 'Phone',
           lastName: 'User',
+          phoneNumber: formattedPhone,
+          userType: 'phone',
           points: 0,
           level: 1,
-          streak: {
-            current: 0,
-            longest: 0,
-            lastSessionDate: null
-          },
+          streak: 0,
           badges: [],
           achievements: [],
           stats: {
             totalSessions: 0,
             totalMessages: 0,
-            totalDuration: 0,
-            languagesUsed: [],
-            modesUsed: [],
-            firstSessionDate: null,
-            lastSessionDate: null
+            totalMinutes: 0,
+            crisisSessions: 0
           }
         });
         await user.save();
