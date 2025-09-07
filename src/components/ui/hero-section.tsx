@@ -24,45 +24,51 @@ export function HeroSection({ className }: HeroSectionProps) {
   };
 
   return (
-    <div className={cn("relative min-h-screen flex items-center justify-center py-12 sm:py-16", className)}>
+    <div className={cn("relative min-h-screen flex items-center justify-center py-12 sm:py-16 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-indigo-900/20", className)}>
       {/* Content */}
       <div className="relative z-10 text-center px-6 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <div className="inline-flex items-center px-6 sm:px-6 py-3 sm:py-3 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm sm:text-sm font-medium mb-8 sm:mb-10">
-          <span className="w-2 h-2 sm:w-2 sm:h-2 bg-blue-500 rounded-full mr-3 sm:mr-3" />
-          <span className="hidden sm:inline">Innovative AI-Powered Mental Wellness Platform</span>
-          <span className="sm:hidden">AI-Powered Wellness</span>
-        </div>
-
-        <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 lg:mb-10 leading-tight">
-          Professional Mental Wellness
-          <span className="block text-blue-600 dark:text-blue-400 mt-2 sm:mt-3">
-            Support, 24/7
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-800 dark:text-white mb-6 sm:mb-8 lg:mb-10 leading-tight animate-pulse">
+          Your Mental Health
+          <span className="block text-purple-600 dark:text-purple-400 mt-2 sm:mt-3">
+            Companion
           </span>
         </h1>
 
-        <p className="text-base sm:text-base md:text-lg lg:text-xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 lg:mb-12 max-w-3xl mx-auto leading-relaxed font-light px-4 sm:px-4">
-          Get compassionate, evidence-based mental health guidance through AI-powered conversations. 
-          Available anytime, anywhere, with cultural sensitivity for Indian users.
+        <p className="text-lg sm:text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-10 lg:mb-12 max-w-4xl mx-auto leading-relaxed px-4 sm:px-4">
+          Connect with licensed professionals through our AI-powered platform. Get support 
+          for anxiety, depression, trauma, and life challenges. Available 24/7 for all age groups.
         </p>
 
-        <div className="flex justify-center items-center mb-8 sm:mb-10 lg:mb-12 px-4">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8 sm:mb-10 lg:mb-12 px-4">
           <Button 
             onClick={handleStartJourney}
             disabled={!isLoaded}
-            className="w-full sm:w-auto text-base sm:text-base lg:text-lg px-8 sm:px-8 lg:px-12 py-4 sm:py-4 lg:py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full sm:w-auto text-lg px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
           >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
             {!isLoaded ? (
               "Loading..."
             ) : isSignedIn ? (
               "Go to Dashboard"
             ) : (
-              "Start Your Wellness Journey"
+              "Start Chatting Now"
             )}
+          </Button>
+          <Button 
+            onClick={() => document.getElementById('phone-input')?.scrollIntoView({ behavior: 'smooth' })}
+            className="w-full sm:w-auto text-lg px-8 py-4 bg-white text-purple-600 border-2 border-purple-600 rounded-full font-semibold hover:bg-purple-50 transition-all duration-300"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            Voice Support
           </Button>
         </div>
 
         {/* Phone Input Section */}
-        <div className="mb-8 sm:mb-10 lg:mb-12 px-4">
+        <div id="phone-input" className="mb-8 sm:mb-10 lg:mb-12 px-4">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 sm:p-8 border border-blue-200/50 dark:border-blue-800/50">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-full mb-4">

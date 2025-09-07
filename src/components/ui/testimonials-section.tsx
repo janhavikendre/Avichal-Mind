@@ -7,36 +7,27 @@ interface TestimonialsSectionProps {
   className?: string;
 }
 
-const features = [
+const testimonials = [
   {
-    icon: "💬",
-    title: "Start a Conversation",
-    description: "Begin your wellness journey by typing or speaking your concerns. Our AI understands context and provides personalized guidance."
+    id: 1,
+    quote: "AVI was there for me at 3 AM when I needed someone the most. The instant connection to a professional saved my life.",
+    author: "Sarah, 24",
+    color: "bg-purple-50 dark:bg-purple-900/20",
+    textColor: "text-purple-600 dark:text-purple-400"
   },
   {
-    icon: "🎯",
-    title: "Get Personalized Support",
-    description: "Receive evidence-based advice, breathing exercises, and coping strategies tailored to your specific situation and cultural background."
+    id: 2,
+    quote: "As a senior, I was hesitant about online therapy. But the platform is so easy to use, and my therapist is wonderful.",
+    author: "Robert, 72",
+    color: "bg-blue-50 dark:bg-blue-900/20",
+    textColor: "text-blue-600 dark:text-blue-400"
   },
   {
-    icon: "📝",
-    title: "Track Your Progress",
-    description: "Every session is automatically summarized and saved. Review your journey and see how far you've come in your mental wellness."
-  },
-  {
-    icon: "🔒",
-    title: "Complete Privacy",
-    description: "Your conversations are private and secure. No human therapists, no judgment - just confidential AI support when you need it."
-  },
-  {
-    icon: "🌍",
-    title: "Cultural Understanding",
-    description: "Built specifically for Indian users with support for English, Hindi, and Marathi. Understands family dynamics and social pressures."
-  },
-  {
-    icon: "⚡",
-    title: "Instant Availability",
-    description: "No appointments, no waiting. Get immediate support 24/7 whenever you need someone to talk to or guidance on mental wellness."
+    id: 3,
+    quote: "The postpartum support I received here helped me through the darkest period of my life. I'm forever grateful.",
+    author: "Maria, 31",
+    color: "bg-pink-50 dark:bg-pink-900/20",
+    textColor: "text-pink-600 dark:text-pink-400"
   }
 ];
 
@@ -46,28 +37,28 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
-            How It Works
+            What Our Users Say
           </h2>
-          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-4">
-            Your journey to better mental wellness starts here. Simple, private, and always available.
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4">
+            Real stories from people who found support and healing through Avichal Mind
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {features.map((feature, index) => (
-            <Card key={index} className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow duration-300">
-              <CardContent className="p-4 sm:p-6 text-center">
-                <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2 sm:mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {testimonials.map((testimonial) => (
+            <div key={testimonial.id} className={`${testimonial.color} rounded-lg p-8 text-center`}>
+              <div className={`${testimonial.textColor} mb-4`}>
+                <svg className="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v10h-10z"/>
+                </svg>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+                "{testimonial.quote}"
+              </p>
+              <div className={`${testimonial.textColor} font-semibold`}>
+                {testimonial.author}
+              </div>
+            </div>
           ))}
         </div>
       </div>
