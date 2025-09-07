@@ -52,7 +52,11 @@ export async function getOrCreateUser(clerkUserId: string) {
           // Initialize gamification fields
           points: 0,
           level: 1,
-          streak: 0,
+          streak: {
+            current: 0,
+            longest: 0,
+            lastSessionDate: null
+          },
           badges: [],
           achievements: [],
           stats: {
@@ -61,7 +65,9 @@ export async function getOrCreateUser(clerkUserId: string) {
             totalMinutes: 0,
             crisisSessions: 0,
             firstSessionDate: null,
-            lastSessionDate: null
+            lastSessionDate: null,
+            languagesUsed: [],
+            modesUsed: []
           }
         });
         console.log('🔍 Saving user to database...');
