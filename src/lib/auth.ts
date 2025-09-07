@@ -48,22 +48,18 @@ export async function getOrCreateUser(clerkUserId: string) {
           email,
           firstName,
           lastName,
+          userType: 'clerk',
           // Initialize gamification fields
           points: 0,
           level: 1,
-          streak: {
-            current: 0,
-            longest: 0,
-            lastSessionDate: null
-          },
+          streak: 0,
           badges: [],
           achievements: [],
           stats: {
             totalSessions: 0,
             totalMessages: 0,
-            totalDuration: 0,
-            languagesUsed: [],
-            modesUsed: [],
+            totalMinutes: 0,
+            crisisSessions: 0,
             firstSessionDate: null,
             lastSessionDate: null
           }
@@ -110,9 +106,9 @@ export async function getOrCreateUser(clerkUserId: string) {
     // Check if existing user has missing required fields
     let needsUpdate = false;
     
-    // Check for missing firstName or lastName
-    if (!user.firstName || !user.lastName) {
-      console.log('🔍 User has missing firstName or lastName, fetching from Clerk...');
+    // Check for missing firstName
+    if (!user.firstName) {
+      console.log('🔍 User has missing firstName, fetching from Clerk...');
       try {
         // Fetch fresh data from Clerk
         const clerkResponse = await fetch(`https://api.clerk.dev/v1/users/${clerkUserId}`, {
@@ -124,7 +120,7 @@ export async function getOrCreateUser(clerkUserId: string) {
         
         if (clerkResponse.ok) {
           const clerkUser = await clerkResponse.json();
-          user.firstName = clerkUser.first_name || user.firstName || '';
+          user.firstName = clerkUser.first_name || user.firstName || 'User';
           user.lastName = clerkUser.last_name || user.lastName || '';
           needsUpdate = true;
           console.log('✅ Updated user with Clerk data:', { firstName: user.firstName, lastName: user.lastName });
@@ -132,8 +128,8 @@ export async function getOrCreateUser(clerkUserId: string) {
       } catch (error) {
         console.error('❌ Failed to fetch user data from Clerk for update:', error);
         // Set default values if we can't fetch from Clerk
-        user.firstName = user.firstName || 'Unknown';
-        user.lastName = user.lastName || 'User';
+        user.firstName = user.firstName || 'User';
+        user.lastName = user.lastName || '';
         needsUpdate = true;
       }
     }
@@ -149,12 +145,8 @@ export async function getOrCreateUser(clerkUserId: string) {
       needsUpdate = true;
     }
     
-    if (!user.streak) {
-      user.streak = {
-        current: 0,
-        longest: 0,
-        lastSessionDate: null
-      };
+    if (user.streak === undefined || user.streak === null) {
+      user.streak = 0;
       needsUpdate = true;
     }
     
@@ -172,9 +164,8 @@ export async function getOrCreateUser(clerkUserId: string) {
       user.stats = {
         totalSessions: 0,
         totalMessages: 0,
-        totalDuration: 0,
-        languagesUsed: [],
-        modesUsed: [],
+        totalMinutes: 0,
+        crisisSessions: 0,
         firstSessionDate: null,
         lastSessionDate: null
       };

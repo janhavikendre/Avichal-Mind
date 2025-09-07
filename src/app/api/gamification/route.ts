@@ -30,6 +30,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Ensure user has the required structure for gamification (migrate old users)
+    if (!user.stats) {
+      user.stats = {
+        totalSessions: 0,
+        totalMessages: 0,
+        totalMinutes: 0,
+        crisisSessions: 0,
+        firstSessionDate: null,
+        lastSessionDate: null,
+        languagesUsed: [],
+        modesUsed: []
+      };
+    }
+    
+    if (!user.stats.languagesUsed) {
+      user.stats.languagesUsed = [];
+    }
+    
+    if (!user.stats.modesUsed) {
+      user.stats.modesUsed = [];
+    }
+    
+    if (!user.streak || typeof user.streak === 'number') {
+      user.streak = {
+        current: typeof user.streak === 'number' ? user.streak : 0,
+        longest: typeof user.streak === 'number' ? user.streak : 0,
+        lastSessionDate: null
+      };
+    }
+
     // Get user progress summary
     console.log('User data for gamification:', {
       id: user._id,

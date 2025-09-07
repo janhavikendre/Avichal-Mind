@@ -141,8 +141,15 @@ export async function POST(
       user.stats.totalDuration = (user.stats.totalDuration || 0) + session.totalDuration;
       
       // Update languages and modes used
+      if (!user.stats.languagesUsed) {
+        user.stats.languagesUsed = [];
+      }
       if (!user.stats.languagesUsed.includes(session.language)) {
         user.stats.languagesUsed.push(session.language);
+      }
+      
+      if (!user.stats.modesUsed) {
+        user.stats.modesUsed = [];
       }
       if (!user.stats.modesUsed.includes(session.mode)) {
         user.stats.modesUsed.push(session.mode);
@@ -159,11 +166,21 @@ export async function POST(
       const newStreak = gamificationService.updateStreak(user, sessionDate);
       console.log('Streak update:', {
         userId: user.clerkUserId,
-        oldStreak: user.streak.current,
+        oldStreak: user.streak?.current || 0,
         newStreak: newStreak.current,
-        lastSessionDate: user.streak.lastSessionDate,
+        lastSessionDate: user.streak?.lastSessionDate,
         sessionDate: sessionDate
       });
+      
+      // Ensure streak object exists
+      if (!user.streak || typeof user.streak === 'number') {
+        user.streak = {
+          current: typeof user.streak === 'number' ? user.streak : 0,
+          longest: typeof user.streak === 'number' ? user.streak : 0,
+          lastSessionDate: null
+        };
+      }
+      
       user.streak.current = newStreak.current;
       user.streak.longest = newStreak.longest;
       user.streak.lastSessionDate = sessionDate;

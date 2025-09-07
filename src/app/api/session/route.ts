@@ -82,6 +82,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Ensure user has the required structure for gamification (migrate old users)
+    if (!user.stats) {
+      user.stats = {
+        totalSessions: 0,
+        totalMessages: 0,
+        totalMinutes: 0,
+        crisisSessions: 0,
+        firstSessionDate: null,
+        lastSessionDate: null,
+        languagesUsed: [],
+        modesUsed: []
+      };
+    }
+    
+    if (!user.stats.languagesUsed) {
+      user.stats.languagesUsed = [];
+    }
+    
+    if (!user.stats.modesUsed) {
+      user.stats.modesUsed = [];
+    }
+    
+    if (!user.streak || typeof user.streak === 'number') {
+      user.streak = {
+        current: typeof user.streak === 'number' ? user.streak : 0,
+        longest: typeof user.streak === 'number' ? user.streak : 0,
+        lastSessionDate: null
+      };
+    }
+
     let validatedData;
     try {
       validatedData = createSessionSchema.parse(body);
@@ -124,12 +154,12 @@ export async function POST(request: NextRequest) {
       };
 
       // Add language to languagesUsed if not already present
-      if (!user.stats.languagesUsed.includes(language)) {
+      if (!user.stats.languagesUsed || !user.stats.languagesUsed.includes(language)) {
         updateData.$addToSet = { 'stats.languagesUsed': language };
       }
 
       // Add mode to modesUsed if not already present
-      if (!user.stats.modesUsed.includes(mode)) {
+      if (!user.stats.modesUsed || !user.stats.modesUsed.includes(mode)) {
         if (updateData.$addToSet) {
           updateData.$addToSet['stats.modesUsed'] = mode;
         } else {

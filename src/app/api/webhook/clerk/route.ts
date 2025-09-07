@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       
       const { id: clerkUserId, email_addresses, first_name, last_name } = evt.data;
       const email = email_addresses[0]?.email_address;
-      const name = `${first_name || ''} ${last_name || ''}`.trim() || 'User';
+      const firstName = first_name || 'User';
+      const lastName = last_name || '';
 
       // Check if user already exists
       const existingUser = await User.findOne({ clerkUserId });
@@ -74,7 +75,20 @@ export async function POST(request: NextRequest) {
       const user = new User({
         clerkUserId,
         email,
-        name,
+        firstName,
+        lastName,
+        userType: 'clerk',
+        points: 0,
+        level: 1,
+        streak: 0,
+        badges: [],
+        achievements: [],
+        stats: {
+          totalSessions: 0,
+          totalMessages: 0,
+          totalMinutes: 0,
+          crisisSessions: 0
+        }
       });
 
       await user.save();
@@ -86,14 +100,16 @@ export async function POST(request: NextRequest) {
       
       const { id: clerkUserId, email_addresses, first_name, last_name } = evt.data;
       const email = email_addresses[0]?.email_address;
-      const name = `${first_name || ''} ${last_name || ''}`.trim() || 'User';
+      const firstName = first_name || 'User';
+      const lastName = last_name || '';
 
       // Update user
       await User.findOneAndUpdate(
         { clerkUserId },
         { 
           email,
-          name,
+          firstName,
+          lastName,
           updatedAt: new Date()
         },
         { new: true }

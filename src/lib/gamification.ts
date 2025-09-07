@@ -381,21 +381,21 @@ class GamificationService {
     // Ensure streak is current by checking if it needs to be updated
     const currentStreak = this.getCurrentStreak(user);
     
-    const level = this.calculateLevel(user.points);
-    const progressToNext = this.progressToNextLevel(user.points);
+    const level = this.calculateLevel(user.points || 0);
+    const progressToNext = this.progressToNextLevel(user.points || 0);
     const pointsForNext = this.pointsForNextLevel(level);
 
-    const completedBadges = user.badges.length;
+    const completedBadges = (user.badges || []).length;
     const totalBadges = this.badges.length;
     const badgeProgress = (completedBadges / totalBadges) * 100;
 
-    const completedAchievements = user.achievements.filter(a => a.completed).length;
+    const completedAchievements = (user.achievements || []).filter(a => a.completed).length;
     const totalAchievements = this.achievements.length;
     const achievementProgress = (completedAchievements / totalAchievements) * 100;
 
     return {
       level,
-      points: user.points,
+      points: user.points || 0,
       progressToNext,
       pointsToNext: pointsForNext,
       streak: currentStreak,
@@ -411,10 +411,16 @@ class GamificationService {
   // Get current streak without updating the user object
   getCurrentStreak(user: IUser) {
     const today = new Date();
+    
+    // Handle old streak structure
+    if (!user.streak || typeof user.streak === 'number') {
+      return { current: 0, longest: 0 };
+    }
+    
     const lastSession = user.streak.lastSessionDate ? new Date(user.streak.lastSessionDate) : null;
     
     if (!lastSession) {
-      return { current: 0, longest: user.streak.longest };
+      return { current: 0, longest: user.streak.longest || 0 };
     }
     
     // Calculate days since last session
