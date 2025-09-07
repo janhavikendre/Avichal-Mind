@@ -124,7 +124,7 @@ export function FeaturesGrid({ className }: FeaturesGridProps) {
                     {feature.description}
                   </p>
                   <div className="text-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${badgeColors[ageGroups[feature.title] as keyof typeof badgeColors]}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${badgeColors[ageGroups[feature.title as keyof typeof ageGroups] as keyof typeof badgeColors]}`}>
                       {ageGroups[feature.title as keyof typeof ageGroups]}
                     </span>
                   </div>
