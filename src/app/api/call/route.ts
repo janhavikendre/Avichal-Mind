@@ -123,6 +123,10 @@ export async function POST(request: NextRequest) {
     // Get the webhook URL for TwiML
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const webhookUrl = `${baseUrl}/api/voice-webhook`;
+    
+    console.log('🎯 Call API - Environment:', process.env.NODE_ENV);
+    console.log('🎯 Call API - Base URL:', baseUrl);
+    console.log('🎯 Call API - Webhook URL:', webhookUrl);
 
     // Make the outbound call
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;

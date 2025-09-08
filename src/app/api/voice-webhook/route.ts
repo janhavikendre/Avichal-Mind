@@ -10,6 +10,10 @@ const VoiceResponse = twilio.twiml.VoiceResponse;
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🎯 Voice webhook called - Environment:', process.env.NODE_ENV);
+    console.log('🎯 Voice webhook called - URL:', request.url);
+    console.log('🎯 Voice webhook called - Method:', request.method);
+    
     const formData = await request.formData();
     const callSid = formData.get('CallSid') as string;
     const from = formData.get('From') as string;
@@ -18,13 +22,14 @@ export async function POST(request: NextRequest) {
     const speechResult = formData.get('SpeechResult') as string;
     const confidence = formData.get('Confidence') as string;
 
-    console.log('Voice webhook received:', {
+    console.log('🎯 Voice webhook received:', {
       callSid,
       from,
       to,
       callStatus,
       speechResult,
-      confidence
+      confidence,
+      environment: process.env.NODE_ENV
     });
 
     const twiml = new VoiceResponse();
@@ -91,7 +96,10 @@ export async function POST(request: NextRequest) {
       twiml.hangup();
 
       // Return immediately with optimized headers
-      return new NextResponse(twiml.toString(), {
+      const twimlResponse = twiml.toString();
+      console.log('🎯 Returning TwiML for in-progress call:', twimlResponse);
+      
+      return new NextResponse(twimlResponse, {
         headers: { 
           'Content-Type': 'text/xml',
           'Cache-Control': 'no-cache',
@@ -314,7 +322,10 @@ export async function POST(request: NextRequest) {
       }, 'Thank you for calling Avichal Mind. Goodbye.');
     }
 
-    return new NextResponse(twiml.toString(), {
+    const finalTwimlResponse = twiml.toString();
+    console.log('🎯 Returning final TwiML response:', finalTwimlResponse);
+    
+    return new NextResponse(finalTwimlResponse, {
       headers: { 'Content-Type': 'text/xml' }
     });
 

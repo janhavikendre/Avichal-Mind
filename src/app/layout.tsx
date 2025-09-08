@@ -38,7 +38,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        elements: {
+          footer: "hidden", // Hide the default Clerk footer
+          footerText: "hidden", // Hide the "Secured by clerk" text
+          footerActionText: "hidden", // Hide development mode text
+        }
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.className} antialiased`}>
           <ThemeProvider defaultTheme="light" storageKey="avichal-theme">
