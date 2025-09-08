@@ -124,8 +124,12 @@ export function PhoneInput({ className }: PhoneInputProps) {
         console.log('Note: Could not clear Clerk session data:', error);
       }
 
-      // Redirect to dashboard like Clerk users
-      router.push('/dashboard');
+      // Redirect based on user type - phone users go to voice session, others to dashboard
+      const redirectUrl = data.redirectUrl || '/dashboard';
+      console.log('🎯 PhoneInput: API Response:', data);
+      console.log('🎯 PhoneInput: Redirect URL:', redirectUrl);
+      console.log('🎯 PhoneInput: User Type:', data.userType);
+      router.push(redirectUrl);
     } catch (error) {
       console.error("Error initiating call:", error);
       toast.error(

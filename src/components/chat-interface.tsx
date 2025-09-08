@@ -69,9 +69,9 @@ export default function ChatInterface({
     scrollToBottomImmediate();
   }, [messages, isTyping]);
 
-  // Auto-speak AI responses in voice mode
+  // Auto-speak AI responses in both text and voice modes
   useEffect(() => {
-    if (mode === 'voice' && messages.length > 0) {
+    if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'assistant' && lastMessage._id !== lastSpokenIdRef.current) {
         lastSpokenIdRef.current = lastMessage._id;
@@ -634,7 +634,7 @@ export default function ChatInterface({
                     message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
                   }`}>
                     <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
-                    {message.role === 'assistant' && !isContinueSession && (
+                    {message.role === 'assistant' && !isContinueSession && mode === 'voice' && (
                       <button 
                         onClick={() => playMessage(message)}
                         className={`ml-2 p-1 rounded touch-button ${
@@ -812,13 +812,6 @@ export default function ChatInterface({
                     )
                   ) : (
                     <>
-                      <button
-                        onClick={testTTS}
-                        className="p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white"
-                        title="Test TTS"
-                      >
-                        🔊
-                      </button>
                       <button
                         onClick={sendMessage}
                         disabled={!newMessage.trim() || isSending}

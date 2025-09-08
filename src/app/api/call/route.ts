@@ -176,6 +176,11 @@ export async function POST(request: NextRequest) {
           userName: `${user.firstName} ${user.lastName}`
         });
 
+        const redirectUrl = user.userType === 'phone' ? `/session/${session._id}/continue` : '/dashboard';
+        console.log('🎯 Call API (Trial): User type:', user.userType);
+        console.log('🎯 Call API (Trial): Redirect URL:', redirectUrl);
+        console.log('🎯 Call API (Trial): Session ID:', session._id);
+
         return NextResponse.json({
           success: true,
           callSid: mockCallSid,
@@ -190,6 +195,7 @@ export async function POST(request: NextRequest) {
             phoneNumber: user.phoneNumber,
             userType: user.userType
           },
+          redirectUrl: redirectUrl,
           warning: 'Note: For trial accounts, phone calls require number verification. You can still use the chat interface for AI support!'
         });
       } else {
@@ -223,6 +229,11 @@ export async function POST(request: NextRequest) {
       userType: user.userType
     });
 
+    const redirectUrl = user.userType === 'phone' ? `/session/${session._id}/continue` : '/dashboard';
+    console.log('🎯 Call API: User type:', user.userType);
+    console.log('🎯 Call API: Redirect URL:', redirectUrl);
+    console.log('🎯 Call API: Session ID:', session._id);
+
     return NextResponse.json({
       success: true,
       callSid: call.sid,
@@ -236,7 +247,8 @@ export async function POST(request: NextRequest) {
         lastName: user.lastName,
         phoneNumber: user.phoneNumber,
         userType: user.userType
-      }
+      },
+      redirectUrl: redirectUrl
     });
 
   } catch (error) {
