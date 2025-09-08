@@ -31,6 +31,17 @@ export async function POST(request: NextRequest) {
       confidence,
       environment: process.env.NODE_ENV
     });
+    
+    // Debug speech detection
+    console.log('🔍 Speech detection debug:', {
+      hasSpeechResult: !!speechResult,
+      speechResultValue: speechResult,
+      speechResultType: typeof speechResult,
+      speechResultLength: speechResult?.length,
+      confidenceValue: confidence,
+      confidenceType: typeof confidence,
+      confidenceParsed: parseFloat(confidence || '0')
+    });
 
     const twiml = new VoiceResponse();
 
@@ -42,7 +53,15 @@ export async function POST(request: NextRequest) {
     }
 
     // INSTANT GREETING for in-progress calls - ABSOLUTELY NO DELAYS!
-    if (callStatus === 'in-progress') {
+    console.log('🔍 Greeting condition check:', {
+      callStatus,
+      speechResult,
+      isInProgress: callStatus === 'in-progress',
+      hasNoSpeech: !speechResult,
+      shouldGreet: callStatus === 'in-progress' && !speechResult
+    });
+    
+    if (callStatus === 'in-progress' && !speechResult) {
       console.log('🎤 INSTANT GREETING - Zero delays!');
       
       // Ultra-fast greeting with optimized TwiML
@@ -105,6 +124,24 @@ export async function POST(request: NextRequest) {
           'Cache-Control': 'no-cache',
           'Connection': 'close'
         }
+      });
+    }
+
+    // If we have speech input, we need to process it
+    if (speechResult) {
+      console.log('🎤 Speech detected, processing...');
+      // Continue to speech processing below
+    } else {
+      // No speech and not initial greeting - this shouldn't happen but handle gracefully
+      console.log('⚠️ No speech detected and not initial greeting - ending call');
+      twiml.say({
+        voice: 'alice',
+        language: 'en-US'
+      }, 'Thank you for calling Avichal Mind. Goodbye.');
+      twiml.hangup();
+      
+      return new NextResponse(twiml.toString(), {
+        headers: { 'Content-Type': 'text/xml' }
       });
     }
 
@@ -191,8 +228,17 @@ export async function POST(request: NextRequest) {
       console.log('✅ Found existing session:', session._id);
     }
 
-    // Handle speech input
+    // Handle speech input - only process if we have speech
+    console.log('🎤 Speech processing check:', {
+      speechResult,
+      confidence,
+      hasSpeech: !!speechResult,
+      confidenceValue: parseFloat(confidence),
+      meetsThreshold: speechResult && parseFloat(confidence) > 0.5
+    });
+    
     if (speechResult && parseFloat(confidence) > 0.5) {
+      console.log('✅ Processing speech input:', speechResult);
       // Save user message
       const userMessage = new Message({
         sessionId: session._id,
@@ -315,11 +361,34 @@ export async function POST(request: NextRequest) {
       }
 
     } else {
-      // Handle other call statuses
-      twiml.say({
-        voice: 'alice',
-        language: 'en-US'
-      }, 'Thank you for calling Avichal Mind. Goodbye.');
+      // No speech detected or confidence too low -> gently reprompt and keep listening
+      console.log('⚠️ No/low-confidence speech detected. Reprompting and continuing to listen.');
+      const sessionLanguage = session?.language || 'en';
+      const retryVoice = getVoiceConfig(sessionLanguage);
+
+      twiml.say({ voice: retryVoice.voice, language: retryVoice.language },
+        sessionLanguage === 'hi'
+          ? 'माफ़ कीजिए, मुझे स्पष्ट रूप से सुनाई नहीं दिया। कृपया फिर से बोलें।'
+          : sessionLanguage === 'mr'
+          ? 'माफ करा, मला स्पष्टपणे ऐकू आले नाही. कृपया पुन्हा बोला.'
+          : "I'm sorry, I didn't catch that. Please speak again.");
+
+      const repromptGather = twiml.gather({
+        input: ['speech'],
+        timeout: 15,
+        speechTimeout: 'auto',
+        action: '/api/voice-webhook',
+        method: 'POST',
+        language: retryVoice.language,
+        partialResultCallback: '/api/voice-webhook',
+        partialResultCallbackMethod: 'POST',
+        enhanced: true,
+        profanityFilter: false
+      });
+
+      const repromptResponse = twiml.toString();
+      console.log('🎯 Returning reprompt TwiML (no speech):', repromptResponse);
+      return new NextResponse(repromptResponse, { headers: { 'Content-Type': 'text/xml' } });
     }
 
     const finalTwimlResponse = twiml.toString();
