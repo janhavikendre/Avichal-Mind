@@ -67,13 +67,13 @@ export async function POST(request: NextRequest) {
       // Ultra-fast greeting with optimized TwiML
       const greeting = `Hello! This is Avichal Mind AI Wellness assistant. I'm here to provide compassionate mental health support. How are you feeling today?`;
       
-      // Use optimized voice settings for fastest response
+      // First, greet the user
       twiml.say({
         voice: 'alice',
         language: 'en-US'
       }, greeting);
 
-      // Start listening immediately with optimized settings
+      // Then start listening for their response (PROPER TwiML STRUCTURE)
       const gather = twiml.gather({
         input: ['speech'],
         timeout: 15,
@@ -81,33 +81,17 @@ export async function POST(request: NextRequest) {
         action: '/api/voice-webhook',
         method: 'POST',
         language: 'en-US',
-        partialResultCallback: '/api/voice-webhook',
-        partialResultCallbackMethod: 'POST',
-        enhanced: true, // Use enhanced speech recognition
-        profanityFilter: false // Skip profanity filtering for speed
-      });
-
-      // Quick fallback message
-      twiml.say({
-        voice: 'alice',
-        language: 'en-US'
-      }, 'I didn\'t hear anything. Please speak clearly about how you\'re feeling or what you\'d like to discuss. You can speak in English, Hindi, or Marathi.');
-
-      // Second chance with same optimized settings
-      const retryGather = twiml.gather({
-        input: ['speech'],
-        timeout: 15,
-        speechTimeout: 'auto',
-        action: '/api/voice-webhook',
-        method: 'POST',
-        language: 'en-US',
-        partialResultCallback: '/api/voice-webhook',
-        partialResultCallbackMethod: 'POST',
         enhanced: true,
         profanityFilter: false
       });
 
-      // Quick goodbye
+      // Prompt inside gather (this will only play if they don't speak)
+      gather.say({
+        voice: 'alice',
+        language: 'en-US'
+      }, 'I\'m listening. Please tell me how you\'re feeling or what you\'d like to discuss. You can speak in English, Hindi, or Marathi.');
+
+      // Fallback if no speech is detected after gather timeout
       twiml.say({
         voice: 'alice',
         language: 'en-US'
@@ -307,7 +291,7 @@ export async function POST(request: NextRequest) {
           language: voiceConfig.language
         }, aiResponse.text);
 
-        // Continue listening for more input with interruption handling
+        // Continue listening for more input - PROPER STRUCTURE
         const gather = twiml.gather({
           input: ['speech'],
           timeout: 15,
@@ -315,16 +299,27 @@ export async function POST(request: NextRequest) {
           action: '/api/voice-webhook',
           method: 'POST',
           language: voiceConfig.language,
-          partialResultCallback: '/api/voice-webhook',
-          partialResultCallbackMethod: 'POST'
+          enhanced: true,
+          profanityFilter: false
         });
 
-        // Ask follow-up question in detected language
+        // This will only play if user doesn't speak within the timeout
         const followUpQuestion = getFollowUpQuestion(detectedLanguage);
         gather.say({
           voice: voiceConfig.voice,
           language: voiceConfig.language
         }, followUpQuestion);
+
+        // Final fallback if still no response
+        twiml.say({
+          voice: voiceConfig.voice,
+          language: voiceConfig.language
+        }, detectedLanguage === 'hi' 
+          ? 'धन्यवाद। फिर मिलते हैं।' 
+          : detectedLanguage === 'mr'
+          ? 'धन्यवाद। पुन्हा भेटूया।'
+          : 'Thank you for calling. Take care.');
+        twiml.hangup();
 
       } catch (aiError) {
         console.error('❌ AI response error:', aiError);
@@ -343,14 +338,16 @@ export async function POST(request: NextRequest) {
           language: voiceConfig.language
         }, fallbackResponse);
 
-        // Continue listening
+        // Continue listening with proper structure
         const gather = twiml.gather({
           input: ['speech'],
           timeout: 15,
           speechTimeout: 'auto',
           action: '/api/voice-webhook',
           method: 'POST',
-          language: voiceConfig.language
+          language: voiceConfig.language,
+          enhanced: true,
+          profanityFilter: false
         });
 
         const followUpQuestion = getFollowUpQuestion(detectedLanguage);
@@ -358,6 +355,17 @@ export async function POST(request: NextRequest) {
           voice: voiceConfig.voice,
           language: voiceConfig.language
         }, followUpQuestion);
+
+        // Final fallback
+        twiml.say({
+          voice: voiceConfig.voice,
+          language: voiceConfig.language
+        }, detectedLanguage === 'hi' 
+          ? 'धन्यवाद। फिर मिलते हैं।' 
+          : detectedLanguage === 'mr'
+          ? 'धन्यवाद। पुन्हा भेटूया।'
+          : 'Thank you for calling. Take care.');
+        twiml.hangup();
       }
 
     } else {
@@ -380,11 +388,26 @@ export async function POST(request: NextRequest) {
         action: '/api/voice-webhook',
         method: 'POST',
         language: retryVoice.language,
-        partialResultCallback: '/api/voice-webhook',
-        partialResultCallbackMethod: 'POST',
         enhanced: true,
         profanityFilter: false
       });
+
+      // Prompt inside gather for better flow
+      repromptGather.say({ voice: retryVoice.voice, language: retryVoice.language },
+        sessionLanguage === 'hi'
+          ? 'मैं सुन रहा हूँ।'
+          : sessionLanguage === 'mr'
+          ? 'मी ऐकत आहे.'
+          : "I'm listening.");
+
+      // Final fallback if no response
+      twiml.say({ voice: retryVoice.voice, language: retryVoice.language },
+        sessionLanguage === 'hi'
+          ? 'धन्यवाद। फिर मिलते हैं।'
+          : sessionLanguage === 'mr'
+          ? 'धन्यवाद। पुन्हा भेटूया।'
+          : 'Thank you for calling. Take care.');
+      twiml.hangup();
 
       const repromptResponse = twiml.toString();
       console.log('🎯 Returning reprompt TwiML (no speech):', repromptResponse);
