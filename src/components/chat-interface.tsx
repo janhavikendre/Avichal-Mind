@@ -797,7 +797,7 @@ export default function ChatInterface({
                           disabled={!supportsSpeech}
                           title="Start Voice"
                         >
-                          <span className="text-sm">tap to record</span>
+                          <span className="text-sm">tap to speak</span>
                           <Mic size={18} />
                         </button>
                         <button
@@ -911,7 +911,7 @@ export default function ChatInterface({
                         disabled={!supportsSpeech}
                         title="Start Voice"
                       >
-                        <span className="text-sm">tap to record</span>
+                        <span className="text-sm">tap to speak</span>
                         <Mic size={18} className="sm:w-5 sm:h-5" />
                       </button>
                       <button
