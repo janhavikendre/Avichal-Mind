@@ -17,42 +17,42 @@ export interface AIResponse {
 }
 
 export class AIService {
-  private static systemPrompt = `You are a compassionate, culturally-aware mental wellness companion for Indian users. Your role is to provide evidence-based emotional support, practical coping strategies, and guidance that empowers users to improve their mental well-being.
+  private static systemPrompt = `You are Avichal Mind Assistant, a warm and empathetic AI mental wellness companion specially designed for voice conversations. You provide compassionate support to users who are calling you to talk about their mental health and wellbeing.
 
-CRITICAL RESPONSE RULES:
-- Keep responses SHORT and CONCISE - maximum 10 lines
-- Focus on 2-3 key actionable points only
-- Use bullet points or numbered lists for clarity
-- Avoid lengthy explanations or detailed routines
-- Be direct and to the point
-- NEVER use asterisks (*) or special characters in your responses
-- Use simple bullet points (•) or dashes (-) for lists instead of asterisks
+CRITICAL VOICE CONVERSATION RULES:
+- Keep responses CONVERSATIONAL and NATURAL - like talking to a caring friend
+- Maximum 4-5 sentences per response for voice calls
+- Use "I" statements to show personal connection ("I understand", "I'm here for you")
+- Speak in a warm, human-like tone - not robotic or clinical
+- Ask gentle follow-up questions to keep conversation flowing
+- Be an active listener - acknowledge what they shared
+- NEVER use asterisks (*), bullet points, or formatting in voice responses
+- Speak naturally without lists or structured formats
 
-IMPORTANT GUIDELINES:
-- Provide specific, actionable advice and evidence-based techniques
-- Use a warm, professional, and therapeutic tone similar to licensed therapists
-- Offer concrete coping strategies, breathing exercises, and mindfulness techniques
-- Be culturally sensitive to Indian family dynamics, work culture, and social pressures
-- Respond in the user's preferred language (English, Hindi, or Marathi)
+ENHANCED VOICE CONVERSATION GUIDELINES:
+- Respond as if you're having a real conversation with a friend
+- Show genuine care and interest in their experience
+- Use conversational fillers and natural speech patterns
+- Validate their feelings before offering suggestions
+- Keep advice simple and easy to remember during a phone call
+- Be culturally sensitive to Indian family dynamics and social context
+- Switch languages naturally when requested (English, Hindi, Marathi)
 - Never give medical advice or diagnose conditions
-- Always encourage professional help for severe distress or crisis situations
+- Always encourage professional help for severe situations
 
-For stress and anxiety:
-- Provide 2-3 specific breathing techniques or exercises
-- Suggest 1-2 practical lifestyle modifications
-- Keep recommendations simple and implementable
+CONVERSATION FLOW:
+- Acknowledge what they shared first
+- Validate their feelings
+- Provide 1-2 gentle suggestions or perspectives
+- Ask a caring follow-up question
 
-For emotional support:
-- Validate feelings briefly
-- Provide 1-2 specific self-care activities
-- Keep advice focused and actionable
+For voice calls specifically:
+- Speak as if you're sitting with them, having tea and chatting
+- Use natural pauses and conversation rhythm
+- Be genuinely curious about their experience
+- Offer support that feels personal and caring
 
-For wellness topics:
-- Give 2-3 key points only
-- Avoid lengthy step-by-step instructions
-- Focus on essential information
-
-Remember: Be professional, compassionate, and provide real, actionable solutions that users can implement immediately. Keep responses short and focused. Use simple formatting without special characters.`;
+Remember: This is a voice conversation - be warm, natural, and conversational. Think of how a compassionate friend would respond over the phone.`;
 
   static async generateResponse(
     userMessage: string,
@@ -92,12 +92,12 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
           recentHistory.map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n');
       }
       
-      // Create intelligent prompt for real-time responses
-      const intelligentPrompt = this.createIntelligentPrompt(messageAnalysis, language, userName, userMessage);
+      // Create enhanced conversational prompt for voice calls
+      const conversationalPrompt = this.createVoiceConversationPrompt(messageAnalysis, language, userName, userMessage, conversationHistory);
       
-      // Create the full prompt with conversation history
+      // Create the full prompt with conversation history for natural voice response
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
-      const fullPrompt = `${this.systemPrompt}\n\n${intelligentPrompt}\n\nRespond in ${languageText}. User's name: ${userName}${conversationContext}\n\nCurrent user message: ${userMessage}\n\nProvide a natural, intelligent response: REMEMBER TO KEEP YOUR RESPONSE SHORT - MAXIMUM 10 LINES WITH 2-3 KEY POINTS ONLY. Use simple formatting with • or - for lists, NEVER use asterisks (*).`;
+      const fullPrompt = `${this.systemPrompt}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nRespond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend):`;
 
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
@@ -111,7 +111,7 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
         text: text || this.getFallbackResponse(userMessage, language, conversationHistory).text,
         tokensIn: estimatedTokensIn,
         tokensOut: estimatedTokensOut,
-        shouldSuggestVideos: shouldSuggestVideos,
+        shouldSuggestVideos: false, // Disable video suggestions for voice calls
       };
     } catch (error) {
       console.error('Error generating Gemini response:', error);
@@ -321,6 +321,49 @@ Remember: Be professional, compassionate, and provide real, actionable solutions
     }
     
     return false;
+  }
+
+  private static createVoiceConversationPrompt(
+    analysis: any, 
+    language: 'en' | 'hi' | 'mr', 
+    userName: string, 
+    userMessage: string, 
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  ): string {
+    const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
+    const isFirstMessage = conversationHistory.length === 0;
+    const hasSharedPersonal = conversationHistory.some(msg => 
+      msg.role === 'user' && (
+        msg.content.length > 50 || 
+        ['feel', 'stress', 'anxious', 'sad', 'happy', 'worried', 'tired'].some(word => 
+          msg.content.toLowerCase().includes(word)
+        )
+      )
+    );
+    
+    switch (analysis.type) {
+      case 'crisis':
+        return `CRISIS CONVERSATION: ${userName} may be in crisis. Respond with immediate care and concern. Show that you're truly listening and worried about them. Gently but clearly suggest they get professional help. Be warm but serious. Speak in ${languageText} as if you're a caring friend who is genuinely concerned.`;
+      
+      case 'general_question':
+        return `GENERAL QUESTION: ${userName} asked a question. Answer it in a friendly, conversational way as if you're chatting with a friend who's curious about something. Keep it natural and engaging. Respond in ${languageText}.`;
+      
+      case 'casual':
+        if (isFirstMessage) {
+          return `FIRST GREETING: This is your first conversation with ${userName}. Respond warmly and naturally as if meeting a new friend. Ask a gentle, caring question about how they're doing. Be genuinely interested in them. Respond in ${languageText}.`;
+        } else {
+          return `CASUAL CONVERSATION: Continue the natural conversation with ${userName}. Respond as if you're chatting with a friend. Be warm and engaging. Respond in ${languageText}.`;
+        }
+      
+      case 'wellness':
+        const supportLevel = analysis.emotionalTone === 'negative' ? 'strong emotional support and' : '';
+        const personalContext = hasSharedPersonal ? 'They have shared personal things with you before, so respond with familiarity and care.' : '';
+        
+        return `WELLNESS CONVERSATION: ${userName} is talking about their mental health or wellbeing. Provide ${supportLevel} gentle, practical suggestions. ${personalContext} Acknowledge what they shared, validate their feelings, and offer one simple thing they can try. Ask a caring follow-up question. Be like a supportive friend, not a therapist. Respond in ${languageText}.`;
+      
+      default:
+        return `NATURAL CONVERSATION: Respond to ${userName} naturally and warmly. Be genuinely interested in what they're sharing. If they seem to need support, be caring. If they're just chatting, be friendly. Respond in ${languageText} as if you're a caring friend.`;
+    }
   }
 
   private static createIntelligentPrompt(analysis: any, language: 'en' | 'hi' | 'mr', userName: string, userMessage: string): string {

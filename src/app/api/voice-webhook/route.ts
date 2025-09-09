@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // INSTANT GREETING for in-progress calls - ABSOLUTELY NO DELAYS!
+    // ENHANCED WARM GREETING for in-progress calls
     console.log('🔍 Greeting condition check:', {
       callStatus,
       speechResult,
@@ -62,22 +62,22 @@ export async function POST(request: NextRequest) {
     });
     
     if (callStatus === 'in-progress' && !speechResult) {
-      console.log('🎤 INSTANT GREETING - Zero delays!');
+      console.log('🎤 SHORT GREETING - Clear and Simple!');
       
-      // Ultra-fast greeting with optimized TwiML
-      const greeting = `Hello! This is Avichal Mind AI Wellness assistant. I'm here to provide compassionate mental health support. How are you feeling today?`;
+      // Short, clear greeting
+      const greeting = `Hi! I'm Avichal Mind Assistant. How can I help you today?`;
       
-      // First, greet the user
+      // Simple greeting with standard voice
       twiml.say({
         voice: 'alice',
         language: 'en-US'
       }, greeting);
 
-      // Then start listening for their response (PROPER TwiML STRUCTURE)
+      // Simple listening setup - FAST RESPONSE: 1-2 seconds after user stops
       const gather = twiml.gather({
         input: ['speech'],
         timeout: 15,
-        speechTimeout: 'auto',
+        speechTimeout: 2, // CRITICAL: 2 seconds for fast AI response
         action: '/api/voice-webhook',
         method: 'POST',
         language: 'en-US',
@@ -85,22 +85,22 @@ export async function POST(request: NextRequest) {
         profanityFilter: false
       });
 
-      // Prompt inside gather (this will only play if they don't speak)
+      // Simple prompt if they don't speak immediately
       gather.say({
         voice: 'alice',
         language: 'en-US'
-      }, 'I\'m listening. Please tell me how you\'re feeling or what you\'d like to discuss. You can speak in English, Hindi, or Marathi.');
+      }, 'I\'m listening. Please tell me how you\'re feeling.');
 
-      // Fallback if no speech is detected after gather timeout
+      // Simple fallback
       twiml.say({
         voice: 'alice',
         language: 'en-US'
-      }, 'Thank you for calling Avichal Mind. Please call back when you\'re ready to talk. Take care!');
+      }, 'Thank you for calling. Take care.');
       twiml.hangup();
 
       // Return immediately with optimized headers
       const twimlResponse = twiml.toString();
-      console.log('🎯 Returning TwiML for in-progress call:', twimlResponse);
+      console.log('🎯 Returning enhanced TwiML for in-progress call:', twimlResponse);
       
       return new NextResponse(twimlResponse, {
         headers: { 
@@ -212,17 +212,18 @@ export async function POST(request: NextRequest) {
       console.log('✅ Found existing session:', session._id);
     }
 
-    // Handle speech input - only process if we have speech
+    // CRITICAL FIX: Accept ANY speech result to ensure AI responds
     console.log('🎤 Speech processing check:', {
       speechResult,
       confidence,
       hasSpeech: !!speechResult,
-      confidenceValue: parseFloat(confidence),
-      meetsThreshold: speechResult && parseFloat(confidence) > 0.5
+      confidenceValue: parseFloat(confidence || '0'),
+      willProcess: !!speechResult // Process ANY speech, regardless of confidence
     });
     
-    if (speechResult && parseFloat(confidence) > 0.5) {
+    if (speechResult) { // CRITICAL: Remove confidence check - process ANY speech
       console.log('✅ Processing speech input:', speechResult);
+      
       // Save user message
       const userMessage = new Message({
         sessionId: session._id,
@@ -232,40 +233,41 @@ export async function POST(request: NextRequest) {
       });
       await userMessage.save();
 
-      // Detect language from user input
+      // Enhanced language detection
       const detectedLanguage = detectLanguageFromSpeech(speechResult);
-      console.log('🌐 Detected language:', detectedLanguage);
+      console.log('🌐 Enhanced language detection:', detectedLanguage);
 
       // Update session language if changed
       if (detectedLanguage !== session.language) {
         session.language = detectedLanguage;
         await session.save();
         console.log('🔄 Updated session language to:', detectedLanguage);
-        
-        // Provide language switch confirmation
-        const languageConfirmation = getLanguageConfirmation(detectedLanguage);
-        if (languageConfirmation) {
-          const voiceConfig = getVoiceConfig(detectedLanguage);
-          twiml.say({
-            voice: voiceConfig.voice,
-            language: voiceConfig.language
-          }, languageConfirmation);
-        }
       }
 
-      // Generate AI response
+      // Generate enhanced AI response with conversation context
       try {
-        const userName = user.firstName || 'there';
-        console.log('🤖 Generating AI response for:', speechResult, 'in language:', detectedLanguage);
+        const userName = user.firstName || 'friend';
+        console.log('🤖 Generating enhanced AI response for:', speechResult, 'in language:', detectedLanguage);
         
+        // Get conversation history for context
+        const recentMessages = await Message.find({ sessionId: session._id })
+          .sort({ createdAt: -1 })
+          .limit(10);
+        
+        const conversationHistory = recentMessages.reverse().map(msg => ({
+          role: msg.role,
+          content: msg.contentText
+        }));
+        
+        // Enhanced AI service call with conversation context
         const aiResponse = await AIService.generateResponse(
           speechResult, 
           detectedLanguage, 
           userName,
-          [] // No conversation history for voice calls
+          conversationHistory
         );
         
-        console.log('✅ AI response generated:', aiResponse.text);
+        console.log('✅ Enhanced AI response generated:', aiResponse.text);
         
         // Save AI message
         const aiMessage = new Message({
@@ -282,20 +284,20 @@ export async function POST(request: NextRequest) {
         session.messageCount += 2;
         await session.save();
 
-        // Determine voice and language for TTS
+        // Enhanced voice configuration
         const voiceConfig = getVoiceConfig(detectedLanguage);
         
-        // Speak the AI response with appropriate voice
+        // Speak the AI response with enhanced naturalness
         twiml.say({
           voice: voiceConfig.voice,
           language: voiceConfig.language
         }, aiResponse.text);
 
-        // Continue listening for more input - PROPER STRUCTURE
+        // Simple listening setup for continued conversation - FAST RESPONSE
         const gather = twiml.gather({
           input: ['speech'],
-          timeout: 15,
-          speechTimeout: 'auto',
+          timeout: 15, // Standard timeout
+          speechTimeout: 2, // FAST: 2 seconds after user stops speaking
           action: '/api/voice-webhook',
           method: 'POST',
           language: voiceConfig.language,
@@ -303,22 +305,25 @@ export async function POST(request: NextRequest) {
           profanityFilter: false
         });
 
-        // This will only play if user doesn't speak within the timeout
-        const followUpQuestion = getFollowUpQuestion(detectedLanguage);
+        // Simple prompt for continued conversation
         gather.say({
           voice: voiceConfig.voice,
           language: voiceConfig.language
-        }, followUpQuestion);
+        }, detectedLanguage === 'hi' 
+          ? 'और कुछ?'
+          : detectedLanguage === 'mr'
+          ? 'आणखी काही?'
+          : 'Anything else?');
 
-        // Final fallback if still no response
+        // Simple closing
         twiml.say({
           voice: voiceConfig.voice,
           language: voiceConfig.language
         }, detectedLanguage === 'hi' 
-          ? 'धन्यवाद। फिर मिलते हैं।' 
+          ? 'धन्यवाद। अलविदा।'
           : detectedLanguage === 'mr'
-          ? 'धन्यवाद। पुन्हा भेटूया।'
-          : 'Thank you for calling. Take care.');
+          ? 'धन्यवाद। निरोप।'
+          : 'Thank you. Goodbye.');
         twiml.hangup();
 
       } catch (aiError) {
@@ -369,28 +374,46 @@ export async function POST(request: NextRequest) {
       }
 
     } else {
-      // No speech detected or confidence too low -> gently reprompt and keep listening
-      console.log('⚠️ No/low-confidence speech detected. Reprompting and continuing to listen.');
+      // Simple reprompt when no speech detected
+      console.log('⚠️ No speech detected. Simple reprompt.');
       const sessionLanguage = session?.language || 'en';
       const retryVoice = getVoiceConfig(sessionLanguage);
 
+      // Simple reprompt
       twiml.say({ voice: retryVoice.voice, language: retryVoice.language },
         sessionLanguage === 'hi'
-          ? 'माफ़ कीजिए, मुझे स्पष्ट रूप से सुनाई नहीं दिया। कृपया फिर से बोलें।'
+          ? 'कृपया बोलें।'
           : sessionLanguage === 'mr'
-          ? 'माफ करा, मला स्पष्टपणे ऐकू आले नाही. कृपया पुन्हा बोला.'
-          : "I'm sorry, I didn't catch that. Please speak again.");
+          ? 'कृपया बोला।'
+          : "Please speak.");
 
       const repromptGather = twiml.gather({
         input: ['speech'],
-        timeout: 15,
-        speechTimeout: 'auto',
+        timeout: 10,
+        speechTimeout: 2, // FAST: 2 seconds for reprompt too
         action: '/api/voice-webhook',
         method: 'POST',
         language: retryVoice.language,
         enhanced: true,
         profanityFilter: false
       });
+
+      // Simple prompt inside gather
+      repromptGather.say({ voice: retryVoice.voice, language: retryVoice.language },
+        sessionLanguage === 'hi'
+          ? 'मैं सुन रहा हूँ।'
+          : sessionLanguage === 'mr'
+          ? 'मी ऐकत आहे.'
+          : "I'm listening.");
+
+      // Simple final fallback
+      twiml.say({ voice: retryVoice.voice, language: retryVoice.language },
+        sessionLanguage === 'hi'
+          ? 'धन्यवाद।'
+          : sessionLanguage === 'mr'
+          ? 'धन्यवाद।'
+          : 'Thank you.');
+      twiml.hangup();
 
       // Prompt inside gather for better flow
       repromptGather.say({ voice: retryVoice.voice, language: retryVoice.language },
@@ -497,93 +520,156 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Helper function to detect language from speech
+// Enhanced helper function to detect language from speech with better accuracy
 function detectLanguageFromSpeech(speechText: string): 'en' | 'hi' | 'mr' {
   const lowerText = speechText.toLowerCase();
+  console.log('🔍 Enhanced language detection for:', speechText);
   
-  // Check for Hindi/Marathi characters
+  // Check for Devanagari script (Hindi/Marathi)
   const hasDevanagari = /[\u0900-\u097F]/.test(speechText);
   
   if (hasDevanagari) {
-    // Check for Marathi-specific words
-    const marathiWords = ['काय', 'कसे', 'कधी', 'कुठे', 'कोण', 'मी', 'तुम्ही', 'आहात', 'आहे', 'आहेत', 
-                         'कशी', 'कशा', 'कशीत', 'कशीतही', 'कशीतरी', 'कशीतरीही', 'कशीतरीहीत',
-                         'तुमची', 'तुमचे', 'तुमच्या', 'तुमचं', 'तुमचा', 'तुमचीत', 'तुमच्यात',
-                         'माझी', 'माझे', 'माझ्या', 'माझं', 'माझा', 'माझीत', 'माझ्यात',
-                         'आमची', 'आमचे', 'आमच्या', 'आमचं', 'आमचा', 'आमचीत', 'आमच्यात'];
-    const hasMarathiWords = marathiWords.some(word => lowerText.includes(word));
+    // Enhanced Marathi-specific detection
+    const marathiWords = [
+      // Common Marathi words
+      'काय', 'कसे', 'कधी', 'कुठे', 'कोण', 'मी', 'तुम्ही', 'आहात', 'आहे', 'आहेत',
+      'कशी', 'कशा', 'तुमची', 'तुमचे', 'तुमच्या', 'माझी', 'माझे', 'माझ्या',
+      'आमची', 'आमचे', 'आमच्या', 'येथे', 'तेथे', 'कशात', 'कशावर',
+      // Marathi unique words not found in Hindi
+      'होय', 'नाही', 'पण', 'अन्', 'किंवा', 'तरी', 'जर', 'तर',
+      'बरे', 'चांगले', 'वाईट', 'मोठा', 'लहान', 'नवा', 'जुना'
+    ];
     
-    if (hasMarathiWords) {
-      console.log('🌐 Language detected: Marathi (based on Marathi-specific words)');
+    const marathiCount = marathiWords.filter(word => 
+      speechText.includes(word) || lowerText.includes(word.toLowerCase())
+    ).length;
+    
+    // Enhanced Hindi-specific detection
+    const hindiWords = [
+      // Common Hindi words
+      'कैसे', 'कब', 'कहाँ', 'कौन', 'मैं', 'आप', 'हैं', 'है', 'हूं',
+      'कैसी', 'कैसा', 'आपका', 'आपके', 'आपकी', 'मेरा', 'मेरे', 'मेरी',
+      'हमारा', 'हमारे', 'हमारी', 'यहाँ', 'वहाँ', 'किसमें', 'किसपर',
+      // Hindi unique words
+      'हाँ', 'नहीं', 'लेकिन', 'और', 'या', 'फिर', 'अगर', 'तो',
+      'अच्छा', 'बुरा', 'बड़ा', 'छोटा', 'नया', 'पुराना'
+    ];
+    
+    const hindiCount = hindiWords.filter(word => 
+      speechText.includes(word) || lowerText.includes(word.toLowerCase())
+    ).length;
+    
+    console.log(`🔍 Language scores - Marathi: ${marathiCount}, Hindi: ${hindiCount}`);
+    
+    // If Marathi words are more prevalent, it's Marathi
+    if (marathiCount > hindiCount) {
+      console.log('🌐 Enhanced detection: Marathi (based on word analysis)');
       return 'mr';
     } else {
-      console.log('🌐 Language detected: Hindi (based on Devanagari characters)');
+      console.log('🌐 Enhanced detection: Hindi (based on Devanagari with Hindi words)');
       return 'hi';
     }
   }
   
-  // Check for language switching requests
-  if (lowerText.includes('marathi') || lowerText.includes('मराठी') || lowerText.includes('marathi mein') || 
-      lowerText.includes('marathi me') || lowerText.includes('marathi language') || 
-      lowerText.includes('मराठीत') || lowerText.includes('मराठी मध्ये')) {
-    console.log('🌐 Language switch requested: Marathi');
+  // Enhanced language switching detection with phonetic variations
+  const marathiSwitchPhrases = [
+    'marathi', 'मराठी', 'marathi mein', 'marathi me', 'marathi language',
+    'मराठीत', 'मराठी मध्ये', 'marathi madhe', 'marathit', 'maratheet'
+  ];
+  
+  const hindiSwitchPhrases = [
+    'hindi', 'हिंदी', 'hindi mein', 'hindi me', 'hindi language',
+    'हिंदी में', 'हिंदीत', 'hindi madhe', 'hindit'
+  ];
+  
+  const englishSwitchPhrases = [
+    'english', 'अंग्रेजी', 'english mein', 'english me', 'english language',
+    'अंग्रेजी में', 'अंग्रेजीत', 'angrezi', 'angreji'
+  ];
+  
+  // Check for explicit language switching requests
+  if (marathiSwitchPhrases.some(phrase => lowerText.includes(phrase.toLowerCase()))) {
+    console.log('🌐 Enhanced detection: Marathi (explicit language switch request)');
     return 'mr';
   }
   
-  if (lowerText.includes('hindi') || lowerText.includes('हिंदी') || lowerText.includes('hindi mein') ||
-      lowerText.includes('hindi me') || lowerText.includes('hindi language') ||
-      lowerText.includes('हिंदी में') || lowerText.includes('हिंदीत')) {
-    console.log('🌐 Language switch requested: Hindi');
+  if (hindiSwitchPhrases.some(phrase => lowerText.includes(phrase.toLowerCase()))) {
+    console.log('🌐 Enhanced detection: Hindi (explicit language switch request)');
     return 'hi';
   }
   
-  if (lowerText.includes('english') || lowerText.includes('अंग्रेजी') || lowerText.includes('english mein') ||
-      lowerText.includes('english me') || lowerText.includes('english language') ||
-      lowerText.includes('अंग्रेजी में') || lowerText.includes('अंग्रेजीत')) {
-    console.log('🌐 Language switch requested: English');
+  if (englishSwitchPhrases.some(phrase => lowerText.includes(phrase.toLowerCase()))) {
+    console.log('🌐 Enhanced detection: English (explicit language switch request)');
     return 'en';
   }
   
-  // Default to English
-  console.log('🌐 Language detected: English (default)');
+  // Enhanced phonetic detection for romanized Hindi/Marathi
+  const romanizedMarathiPatterns = [
+    'kay', 'kase', 'kuthe', 'kon', 'mi', 'tumhi', 'aahe', 'aahaat',
+    'bara', 'changla', 'nahi', 'pan', 'kinva'
+  ];
+  
+  const romanizedHindiPatterns = [
+    'kaise', 'kahan', 'kaun', 'main', 'aap', 'hai', 'hun',
+    'accha', 'bura', 'nahin', 'lekin', 'ya'
+  ];
+  
+  const romanizedMarathi = romanizedMarathiPatterns.filter(pattern => 
+    lowerText.includes(pattern)
+  ).length;
+  
+  const romanizedHindi = romanizedHindiPatterns.filter(pattern => 
+    lowerText.includes(pattern)
+  ).length;
+  
+  if (romanizedMarathi > romanizedHindi && romanizedMarathi > 0) {
+    console.log('🌐 Enhanced detection: Marathi (romanized text patterns)');
+    return 'mr';
+  }
+  
+  if (romanizedHindi > 0) {
+    console.log('🌐 Enhanced detection: Hindi (romanized text patterns)');
+    return 'hi';
+  }
+  
+  // Default to English with confidence logging
+  console.log('🌐 Enhanced detection: English (default - no other language indicators found)');
   return 'en';
 }
 
-// Helper function to get voice configuration for different languages
+// Helper function to get simple voice configuration for different languages
 function getVoiceConfig(language: 'en' | 'hi' | 'mr'): { voice: 'alice'; language: 'en-US' | 'hi-IN' } {
   switch (language) {
     case 'hi':
       return { voice: 'alice', language: 'hi-IN' };
     case 'mr':
-      // For Marathi, we'll use English voice but the AI will generate Marathi text
-      // Twilio will attempt to pronounce the Marathi text with English voice
-      return { voice: 'alice', language: 'en-US' };
+      return { voice: 'alice', language: 'en-US' }; // Use English voice for Marathi
     default:
       return { voice: 'alice', language: 'en-US' };
   }
 }
 
-// Helper function to get follow-up questions in different languages
+// Helper function to get enhanced follow-up questions in different languages
 function getFollowUpQuestion(language: 'en' | 'hi' | 'mr'): string {
   switch (language) {
     case 'hi':
-      return 'और कैसे मैं आपकी मदद कर सकता हूं?';
+      return 'मैं यहाँ हूं और सुन रहा हूं। आप और क्या साझा करना चाहते हैं? या कुछ और है जिसके बारे में बात करना चाहते हैं?';
     case 'mr':
-      return 'आणखी कशी मी तुमची मदत करू शकतो?';
+      return 'मी येथे आहे आणि ऐकत आहे. तुम्ही आणखी काही शेअर करू इच्छिता? किंवा आणखी काही आहे ज्याबद्दल बोलायचे आहे?';
     default:
-      return 'How else can I help you today?';
+      return 'I\'m here and listening. What else would you like to share? Is there anything else on your mind that you\'d like to talk about?';
   }
 }
 
-// Helper function to get fallback responses in different languages
+// Helper function to get enhanced fallback responses in different languages
 function getFallbackResponse(language: 'en' | 'hi' | 'mr'): string {
   switch (language) {
     case 'hi':
-      return 'मैं आपकी सहायता के लिए यहाँ हूं। आइए कुछ साँस लेने की तकनीकों से शुरू करते हैं। 4 सेकंड तक गहरी साँस लें, 4 सेकंड रोकें, और 4 सेकंड तक छोड़ें। यह आपको शांत और केंद्रित महसूस करने में मदद करेगा।';
+      return 'मैं यहाँ आपकी सहायता के लिए हूं। चलिए कुछ सांस की तकनीकों के साथ शुरुआत करते हैं। 4 सेकंड तक गहरी सांस लें, 4 सेकंड रोकें, और 4 सेकंड में छोड़ें। यह आपको शांत और केंद्रित महसूस कराएगा। आप कैसा महसूस कर रहे हैं?';
     case 'mr':
-      return 'मी तुमची मदत करण्यासाठी येथे आहे. काही श्वास तंत्रांसह सुरुवात करूया. 4 सेकंद खोल श्वास घ्या, 4 सेकंद धरा, आणि 4 सेकंद सोडा. हे तुम्हाला शांत आणि केंद्रित वाटण्यास मदत करेल.';
+      return 'मी तुमच्या मदतीसाठी येथे आहे. काही श्वसन तंत्रांसह सुरुवात करूया. 4 सेकंद खोल श्वास घ्या, 4 सेकंद धरा, आणि 4 सेकंदांत सोडा. हे तुम्हाला शांत आणि केंद्रित वाटण्यास मदत करेल. तुम्हाला कसे वाटत आहे?';
     default:
-      return "I'm here to support you. Let me help you with some breathing techniques. Take a deep breath in for 4 seconds, hold for 4 seconds, and exhale for 4 seconds. This will help you feel more calm and centered.";
+      return "I'm here to support you through whatever you're experiencing. Let's start with a simple breathing exercise together. Take a deep breath in for 4 seconds, hold it for 4 seconds, and slowly exhale for 4 seconds. This can help you feel more calm and centered. How are you feeling right now?";
   }
 }
 
@@ -596,5 +682,17 @@ function getLanguageConfirmation(language: 'en' | 'hi' | 'mr'): string | null {
       return 'ठीक आहे, आता मी मराठीत बोलेन. तुम्हाला कसे वाटत आहे?';
     default:
       return 'Okay, I will now speak in English. How are you feeling?';
+  }
+}
+
+// Helper function to get warm closing messages
+function getWarmClosing(language: 'en' | 'hi' | 'mr'): string {
+  switch (language) {
+    case 'hi':
+      return 'आज मुझसे बात करने के लिए धन्यवाद। आपकी देखभाल करना याद रखें। मैं हमेशा यहाँ हूं जब आपको मेरी जरूरत हो। अलविदा!';
+    case 'mr':
+      return 'आज माझ्याशी बोलल्याबद्दल धन्यवाद. स्वतःची काळजी घेण्याचे लक्षात ठेवा. तुम्हाला माझी गरज असेल तेव्हा मी नेहमीच येथे आहे. निरोप!';
+    default:
+      return 'Thank you so much for talking with me today. Remember to take care of yourself, and know that I\'m always here whenever you need someone to listen. Take care, and goodbye for now!';
   }
 }
