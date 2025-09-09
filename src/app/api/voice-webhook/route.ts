@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       const gather = twiml.gather({
         input: ['speech'],
         timeout: 15,
-        speechTimeout: 2, // CRITICAL: 2 seconds for fast AI response
+        speechTimeout: '2', // CRITICAL: 2 seconds for fast AI response
         action: '/api/voice-webhook',
         method: 'POST',
         language: 'en-US',
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
         const gather = twiml.gather({
           input: ['speech'],
           timeout: 15, // Standard timeout
-          speechTimeout: 2, // FAST: 2 seconds after user stops speaking
+          speechTimeout: '2', // FAST: 2 seconds after user stops speaking
           action: '/api/voice-webhook',
           method: 'POST',
           language: voiceConfig.language,
@@ -390,7 +390,7 @@ export async function POST(request: NextRequest) {
       const repromptGather = twiml.gather({
         input: ['speech'],
         timeout: 10,
-        speechTimeout: 2, // FAST: 2 seconds for reprompt too
+        speechTimeout: '2', // FAST: 2 seconds for reprompt too
         action: '/api/voice-webhook',
         method: 'POST',
         language: retryVoice.language,
