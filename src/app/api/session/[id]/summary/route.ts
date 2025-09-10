@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectDB } from '@/lib/db';
+import { getOrCreateUser } from '@/lib/auth';
 import { Session as SessionModel } from '@/models/session';
 import { Message as MessageModel } from '@/models/message';
 import { User } from '@/models/user';
-import { geminiService } from '@/lib/gemini';
+import { AIService } from '@/services/ai';
 
 export async function POST(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function POST(
   try {
     const { userId } = await auth();
     const body = await request.json();
-    const { phoneUserId } = body;
+    const { phoneUserId, language: requestLanguage } = body;
 
     // Check if user is authenticated (either Clerk or phone user)
     if (!userId && !phoneUserId) {
@@ -24,8 +25,8 @@ export async function POST(
 
     let user;
     if (userId) {
-      // For Clerk users, we don't need to fetch the user here
-      user = { _id: 'clerk_user' };
+      // Clerk user - get the actual user from database
+      user = await getOrCreateUser(userId);
     } else if (phoneUserId) {
       // Phone user
       user = await User.findById(phoneUserId);
@@ -46,23 +47,51 @@ export async function POST(
 
     // Fetch messages for transcript
     const messages = await MessageModel.find({ sessionId }).sort({ createdAt: 1 }).lean();
-    const transcript = messages
-      .map((m: any) => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.contentText}`)
-      .join('\n');
+    
+    if (messages.length === 0) {
+      console.log('No messages found for session:', sessionId);
+      return NextResponse.json({ error: 'No messages found for session' }, { status: 400 });
+    }
+    
+    // Convert messages to the format expected by AIService
+    const conversationHistory = messages.map((m: any) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.contentText
+    }));
 
-    const prompt = `Create a concise, empathetic 5-7 sentence summary of this mental wellness conversation in the user's language. Avoid PII, avoid diagnoses. Offer 2-3 actionable next steps.\n\nTranscript:\n${transcript}`;
+    console.log('Generating summary for session:', sessionId, 'with', messages.length, 'messages');
+    console.log('Session language:', session.language);
+    console.log('Request language:', requestLanguage);
+    console.log('OpenAI API key available:', !!process.env.OPENAI_API_KEY);
 
-    const ai = await geminiService.generateResponse(prompt, session.language as any);
+    // Use request language as fallback if session language is not available
+    const summaryLanguage = (session.language || requestLanguage || 'en') as 'en' | 'hi' | 'mr';
+    
+    // Generate summary using AIService
+    const summaryResponse = await AIService.generateSessionSummary(
+      conversationHistory,
+      summaryLanguage
+    );
 
-    const summaryText = ai?.trim?.() || ai || 'Summary unavailable.';
+    console.log('Generated summary:', summaryResponse);
+
+    const summaryText = summaryResponse || 'Summary unavailable.';
 
     session.summary = summaryText;
     await session.save();
 
     return NextResponse.json({ ok: true, summary: summaryText });
   } catch (err) {
-    console.error('Summary generation error', err);
-    return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });
+    console.error('Summary generation error:', err);
+    console.error('Error details:', {
+      message: err instanceof Error ? err.message : 'Unknown error',
+      stack: err instanceof Error ? err.stack : undefined,
+      sessionId: params.id
+    });
+    return NextResponse.json({ 
+      error: 'Failed to generate summary',
+      details: err instanceof Error ? err.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 

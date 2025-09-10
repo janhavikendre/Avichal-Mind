@@ -467,9 +467,9 @@ export default function VoiceSessionPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              {/* <div className="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
                 AM Avichal Mind
-              </div>
+              </div> */}
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <Phone className="h-4 w-4 text-white" />
               </div>

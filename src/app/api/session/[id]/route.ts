@@ -125,8 +125,14 @@ export async function POST(
       const messages = await Message.find({ sessionId: session._id })
         .sort({ createdAt: 1 });
 
+      // Convert messages to the format expected by AIService
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.contentText
+      }));
+
       // Generate summary using AI service with proper language detection
-      const summary = await AIService.generateSessionSummary(messages, session.language);
+      const summary = await AIService.generateSessionSummary(conversationHistory, session.language);
 
       session.completedAt = new Date();
       session.summary = summary;

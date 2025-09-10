@@ -333,12 +333,12 @@ export default function ContinueSessionPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="hidden sm:block bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              {/* <div className="hidden sm:block bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
                 AM Avichal Mind
-              </div>
-              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-full flex items-center justify-center">
+              </div> */}
+              {/* <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-xs sm:text-sm">J</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
