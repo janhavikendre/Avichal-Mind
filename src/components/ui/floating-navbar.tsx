@@ -28,21 +28,21 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
       className={cn(
-        "fixed top-4 right-4 z-50",
+        "fixed top-6 right-6 z-50",
         className
       )}
     >
-      <div className="flex items-center gap-2 rounded-full border border-gray-200/50 bg-white/80 backdrop-blur-md px-3 sm:px-4 py-2 shadow-lg dark:border-gray-800/50 dark:bg-gray-950/80">
-        <div className="flex items-center space-x-2">
-          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-xs sm:text-sm">AM</span>
+      <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl px-4 sm:px-6 py-3 shadow-2xl dark:border-gray-700/50 dark:bg-gray-900/90">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-sm sm:text-base">AM</span>
           </div>
-          <span className="hidden sm:block text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <span className="hidden sm:block text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             Avichal Mind
           </span>
         </div>
         
-        <div className="flex items-center space-x-1 sm:space-x-2 ml-2 sm:ml-4">
+        <div className="flex items-center space-x-2 sm:space-x-3 ml-3 sm:ml-6">
           <ThemeToggle />
           
           {/* Show sign in/up buttons only if neither Clerk user nor phone user is logged in */}
@@ -50,12 +50,12 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
             {!isPhoneUser && (
               <>
                 <SignInButton mode="modal">
-                  <Button variant="ghost" size="sm" className="hidden sm:block text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 text-xs sm:text-sm">
+                  <Button variant="ghost" size="sm" className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium">
                     Sign In
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs sm:text-sm px-2 sm:px-3">
+                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300">
                     <span className="hidden sm:inline">Get Started</span>
                     <span className="sm:hidden">Start</span>
                   </Button>
