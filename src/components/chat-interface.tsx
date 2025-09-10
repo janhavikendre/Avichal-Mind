@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Mic, MicOff, Play, Pause, Scissors, Check } from 'lucide-react';
+import { Send, Mic, MicOff, Play, Pause, Plus, Scissors, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { CrisisVideoSupport } from '@/components/ui/crisis-video-support';
 
