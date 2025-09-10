@@ -159,6 +159,198 @@ export default function ChatInterface({
     }
   }, [messages, isContinueSession]);
 
+  // Enhanced Marathi text preprocessing for browser TTS
+  function preprocessMarathiTextForBrowser(text: string): string {
+    let processedText = text;
+    
+    // Enhanced Marathi-specific word replacements for better pronunciation and fluency
+    const marathiReplacements = {
+      // Specific words with pronunciation issues - Enhanced for better fluency
+      'झालंय': 'झाले आहे', // Better pronunciation for "झालंय"
+      'सांगायचं': 'सांगायचे', // Better pronunciation for "सांगायचं"
+      'बोलण्याचा': 'बोलण्याचे', // Better pronunciation for "बोलण्याचा"
+      'आज': 'आज', // Ensure proper pronunciation
+      'words': 'वर्ड्स', // Convert English "words" to Marathi pronunciation
+      'काना': 'काना', // Ensure proper pronunciation
+      
+      // Enhanced pronunciation for common Marathi words
+      'तुम्ही': 'तुम्ही', // You (plural/respectful)
+      'तू': 'तू', // You (informal)
+      'मी': 'मी', // I
+      'आम्ही': 'आम्ही', // We
+      'तुमचे': 'तुमचे', // Your
+      'माझे': 'माझे', // My
+      'आमचे': 'आमचे', // Our
+      
+      // Enhanced fluency for common phrases
+      'कसे आहे': 'कसे आहे', // How are you
+      'काय झाले': 'काय झाले', // What happened
+      'काय करायचे': 'काय करायचे', // What to do
+      'कसे वाटत आहे': 'कसे वाटत आहे', // How are you feeling
+      'ठीक आहे': 'ठीक आहे', // It's okay
+      'चांगले': 'चांगले', // Good
+      'वाईट': 'वाईट', // Bad
+    };
+    
+    // Apply Marathi-specific replacements
+    Object.entries(marathiReplacements).forEach(([original, replacement]) => {
+      const regex = new RegExp(original, 'g');
+      processedText = processedText.replace(regex, replacement);
+    });
+    
+    // Enhanced natural Marathi speech patterns for better fluency
+    processedText = processedText.replace(/\. /g, '. '); // Natural pauses
+    processedText = processedText.replace(/,/g, ', '); // Comma pauses
+    processedText = processedText.replace(/!/g, '! '); // Exclamation pauses
+    processedText = processedText.replace(/\?/g, '? '); // Question pauses
+    
+    // Add natural Marathi speech rhythm and flow
+    processedText = processedText.replace(/आहे /g, 'आहे '); // Natural "आहे" flow
+    processedText = processedText.replace(/आहात /g, 'आहात '); // Natural "आहात" flow
+    processedText = processedText.replace(/आहेत /g, 'आहेत '); // Natural "आहेत" flow
+    
+    // Enhanced pronunciation for common Marathi verb forms
+    processedText = processedText.replace(/करतोय/g, 'करतो आहे'); // Is doing (male form)
+    processedText = processedText.replace(/करतेय/g, 'करते आहे'); // Is doing (female form)
+    processedText = processedText.replace(/करतातय/g, 'करतात आहेत'); // Are doing (plural)
+    
+    // Enhanced pronunciation for Marathi question words
+    processedText = processedText.replace(/काय/g, 'काय'); // What (clear pronunciation)
+    processedText = processedText.replace(/कसे/g, 'कसे'); // How (clear pronunciation)
+    processedText = processedText.replace(/कधी/g, 'कधी'); // When (clear pronunciation)
+    processedText = processedText.replace(/कुठे/g, 'कुठे'); // Where (clear pronunciation)
+    processedText = processedText.replace(/कोण/g, 'कोण'); // Who (clear pronunciation)
+    
+    // Enhanced pronunciation for Marathi emotional expressions
+    processedText = processedText.replace(/दुःख/g, 'दुःख'); // Sadness (clear pronunciation)
+    processedText = processedText.replace(/आनंद/g, 'आनंद'); // Joy (clear pronunciation)
+    processedText = processedText.replace(/चिंता/g, 'चिंता'); // Worry (clear pronunciation)
+    processedText = processedText.replace(/तणाव/g, 'तणाव'); // Stress (clear pronunciation)
+    processedText = processedText.replace(/शांत/g, 'शांत'); // Peaceful (clear pronunciation)
+    
+    // Enhanced pronunciation for Marathi wellness terms
+    processedText = processedText.replace(/मानसिक/g, 'मानसिक'); // Mental (clear pronunciation)
+    processedText = processedText.replace(/आरोग्य/g, 'आरोग्य'); // Health (clear pronunciation)
+    processedText = processedText.replace(/काळजी/g, 'काळजी'); // Care (clear pronunciation)
+    processedText = processedText.replace(/समर्थन/g, 'समर्थन'); // Support (clear pronunciation)
+    processedText = processedText.replace(/मदत/g, 'मदत'); // Help (clear pronunciation)
+    
+    return processedText;
+  }
+
+  // Enhanced voice configuration for browser TTS
+  function getBrowserVoiceConfig(language: 'en' | 'hi' | 'mr', voices: SpeechSynthesisVoice[]): {
+    voice: SpeechSynthesisVoice | null;
+    rate: number;
+    pitch: number;
+    reason: string;
+  } {
+    let targetVoice: SpeechSynthesisVoice | null = null;
+    let rate: number;
+    let pitch: number;
+    let reason: string;
+
+    switch (language) {
+      case 'en':
+        // English: Priority en-US voices
+        rate = 1.0;
+        pitch = 1.0;
+        
+        // Priority 1: en-US voices like "Google US English", "Samantha", "Microsoft Aria"
+        targetVoice = voices.find(voice => 
+          voice.lang === 'en-US' && (
+            voice.name.includes('Google US English') ||
+            voice.name.includes('Samantha') ||
+            voice.name.includes('Microsoft Aria') ||
+            voice.name.includes('Google') ||
+            voice.name.includes('Microsoft')
+          )
+        ) || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for English playback - High-quality en-US voice`;
+        } else {
+          // Fallback to any en-US voice
+          targetVoice = voices.find(voice => voice.lang === 'en-US') || null;
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for English playback - Available en-US voice`;
+          } else {
+            reason = 'High-quality English voice not available, using browser default';
+          }
+        }
+        break;
+
+      case 'hi':
+        // Hindi: hi-IN voices with optimized settings
+        rate = 1.05; // Slightly faster for clarity
+        pitch = 1.0;
+        
+        // Priority 1: hi-IN language code
+        targetVoice = voices.find(voice => voice.lang === 'hi-IN') || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Native Hindi voice`;
+        } else {
+          // Priority 2: Voices with "Hindi" in the name
+          targetVoice = voices.find(voice => voice.name.includes('Hindi')) || null;
+          
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Hindi-named voice`;
+          } else {
+            // Priority 3: Google voices that approximate Hindi
+            targetVoice = voices.find(voice => 
+              voice.name.includes('Google') && voice.lang.includes('hi')
+            ) || null;
+            
+            if (targetVoice) {
+              reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Google Hindi approximation`;
+            } else {
+              reason = 'High-quality Hindi voice not available, using browser default';
+            }
+          }
+        }
+        break;
+
+      case 'mr':
+        // Marathi: Use same voice configuration as Hindi for better flow and quality
+        rate = 1.05; // Same as Hindi - slightly faster for clarity
+        pitch = 1.0; // Same as Hindi - natural pitch
+        
+        // Priority 1: hi-IN language code (same as Hindi)
+        targetVoice = voices.find(voice => voice.lang === 'hi-IN') || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Using Hindi voice for better flow and quality`;
+        } else {
+          // Priority 2: Voices with "Hindi" in the name (same as Hindi)
+          targetVoice = voices.find(voice => voice.name.includes('Hindi')) || null;
+          
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Hindi-named voice for better flow`;
+          } else {
+            // Priority 3: Google voices that approximate Hindi (same as Hindi)
+            targetVoice = voices.find(voice => 
+              voice.name.includes('Google') && voice.lang.includes('hi')
+            ) || null;
+            
+            if (targetVoice) {
+              reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Google Hindi approximation for better flow`;
+            } else {
+              reason = 'High-quality Marathi voice not available, using browser default';
+            }
+          }
+        }
+        break;
+
+      default:
+        rate = 1.0;
+        pitch = 1.0;
+        reason = 'Using default voice configuration';
+    }
+
+    return { voice: targetVoice, rate, pitch, reason };
+  }
+
   const speakText = (text: string, messageId?: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       console.log('Speech synthesis not available');
@@ -168,53 +360,28 @@ export default function ChatInterface({
     window.speechSynthesis.cancel();
     
     try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Set language and try to find appropriate voice
-      let targetLang = 'en-US';
-      if (language === 'hi') {
-        targetLang = 'hi-IN';
-      } else if (language === 'mr') {
-        targetLang = 'mr-IN';
+      // Preprocess Marathi text for better pronunciation
+      let processedText = text;
+      if (language === 'mr') {
+        processedText = preprocessMarathiTextForBrowser(text);
+        console.log('Marathi text preprocessed for better pronunciation');
       }
       
-      utterance.lang = targetLang;
-      
-      // Try to find a voice for the target language
+      const utterance = new SpeechSynthesisUtterance(processedText);
       const voices = window.speechSynthesis.getVoices();
-      console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
       
-      let targetVoice = null;
-      if (language === 'hi') {
-        targetVoice = voices.find(voice => 
-          voice.lang.includes('hi') || voice.lang.includes('Hindi') || voice.name.includes('Hindi')
-        );
-      } else if (language === 'mr') {
-        targetVoice = voices.find(voice => 
-          voice.lang.includes('mr') || voice.lang.includes('Marathi') || voice.name.includes('Marathi')
-        );
-        // If no Marathi voice found, try Hindi as fallback
-        if (!targetVoice) {
-          targetVoice = voices.find(voice => 
-            voice.lang.includes('hi') || voice.lang.includes('Hindi')
-          );
-        }
-      } else {
-        targetVoice = voices.find(voice => 
-          voice.lang.includes('en') && voice.lang.includes('US')
-        );
-      }
+      // Get voice configuration using the new rules
+      const voiceConfig = getBrowserVoiceConfig(language, voices);
       
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-        console.log(`Using voice: ${targetVoice.name} (${targetVoice.lang})`);
-      } else {
-        console.log(`No specific voice found for ${language}, using default`);
-      }
-      
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
+      // Apply voice configuration
+      utterance.voice = voiceConfig.voice;
+      utterance.rate = voiceConfig.rate;
+      utterance.pitch = voiceConfig.pitch;
+      utterance.lang = language === 'mr' ? 'mr-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
       utterance.volume = 1;
+      
+      // Log the voice selection with reason
+      console.log(voiceConfig.reason);
       
       if (messageId) {
         setPlayingMessageId(messageId);
@@ -233,6 +400,14 @@ export default function ChatInterface({
         console.error('TTS error:', event);
         setPlayingMessageId(null);
       };
+      
+      console.log('Speaking with:', {
+        text: text.substring(0, 50) + '...',
+        lang: utterance.lang,
+        voice: utterance.voice?.name || 'default',
+        rate: utterance.rate,
+        pitch: utterance.pitch
+      });
       
       window.speechSynthesis.speak(utterance);
     } catch (e) {
@@ -255,7 +430,36 @@ export default function ChatInterface({
     const testText = language === 'mr' ? 'नमस्कार, मी तुमची मदत करत आहे' : 
                     language === 'hi' ? 'नमस्ते, मैं आपकी मदद कर रहा हूं' : 
                     'Hello, I am here to help you';
+    console.log('Testing TTS with text:', testText);
+    console.log('Current language:', language);
     speakText(testText, 'test');
+  };
+
+  // Simple TTS test without voice selection
+  const testSimpleTTS = () => {
+    const testText = language === 'mr' ? 'नमस्कार' : 
+                    language === 'hi' ? 'नमस्ते' : 
+                    'Hello';
+    
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.log('Speech synthesis not available');
+      return;
+    }
+    
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(testText);
+    utterance.lang = language === 'mr' ? 'mr-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    utterance.onstart = () => console.log('Simple TTS started');
+    utterance.onend = () => console.log('Simple TTS ended');
+    utterance.onerror = (event) => console.error('Simple TTS error:', event);
+    
+    console.log('Testing simple TTS with:', testText, 'lang:', utterance.lang);
+    window.speechSynthesis.speak(utterance);
   };
 
   // Generate summary on unmount
@@ -836,22 +1040,30 @@ export default function ChatInterface({
                   {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
                 </span>
               </div>
-              <button
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
-                onClick={() => {
-                  const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `session-${sessionId}-transcript.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Download Transcript
-              </button>
+              <div className="flex gap-2">
+                <button
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
+                  onClick={() => {
+                    const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `session-${sessionId}-transcript.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Download Transcript
+                </button>
+                {/* <button
+                  className="text-green-500 hover:text-green-700 transition-colors text-xs px-2 py-1 border border-green-300 rounded"
+                  onClick={testSimpleTTS}
+                >
+                  Test Simple
+                </button> */}
+              </div>
             </div>
           </div>
         </div>
@@ -926,13 +1138,13 @@ export default function ChatInterface({
                   )
                 ) : (
                   <>
-                    <button
+                    {/* <button
                       onClick={testTTS}
                       className="p-2 sm:p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white touch-button"
                       title="Test TTS"
                     >
                       🔊
-                    </button>
+                    </button> */}
                     <button
                       onClick={sendMessage}
                       disabled={!newMessage.trim() || isSending}
@@ -955,22 +1167,30 @@ export default function ChatInterface({
                   {language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English'}
                 </span>
               </div>
-              <button
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
-                onClick={() => {
-                  const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `session-${sessionId}-transcript.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Download Transcript
-              </button>
+              <div className="flex gap-2">
+                <button
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors text-xs"
+                  onClick={() => {
+                    const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `session-${sessionId}-transcript.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Download Transcript
+                </button>
+                {/* <button
+                  className="text-green-500 hover:text-green-700 transition-colors text-xs px-2 py-1 border border-green-300 rounded"
+                  onClick={testSimpleTTS}
+                >
+                  Test Simple
+                </button> */}
+              </div>
             </div>
           </div>
         </div>

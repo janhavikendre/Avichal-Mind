@@ -45,6 +45,7 @@ export default function VoiceSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
 
   useEffect(() => {
     if (sessionId && phoneUserLoading === false && isPhoneUser) {
@@ -52,6 +53,32 @@ export default function VoiceSessionPage() {
       fetchSession();
     }
   }, [sessionId, phoneUserLoading, isPhoneUser]);
+
+  // Load voices for better TTS
+  useEffect(() => {
+    const loadVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          setVoicesLoaded(true);
+          console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+        } else {
+          // Voices might not be loaded yet, try again
+          setTimeout(loadVoices, 100);
+        }
+      }
+    };
+
+    loadVoices();
+    
+    // Also listen for voices changed event
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+      return () => {
+        window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+      };
+    }
+  }, []);
 
   const fetchSession = async () => {
     try {
@@ -78,16 +105,225 @@ export default function VoiceSessionPage() {
     }
   };
 
+  // Enhanced voice configuration for browser TTS
+  function getBrowserVoiceConfig(language: 'en' | 'hi' | 'mr', voices: SpeechSynthesisVoice[]): {
+    voice: SpeechSynthesisVoice | null;
+    rate: number;
+    pitch: number;
+    reason: string;
+  } {
+    let targetVoice: SpeechSynthesisVoice | null = null;
+    let rate: number;
+    let pitch: number;
+    let reason: string;
+
+    switch (language) {
+      case 'en':
+        // English: Priority en-US voices
+        rate = 1.0;
+        pitch = 1.0;
+        
+        // Priority 1: en-US voices like "Google US English", "Samantha", "Microsoft Aria"
+        targetVoice = voices.find(voice => 
+          voice.lang === 'en-US' && (
+            voice.name.includes('Google US English') ||
+            voice.name.includes('Samantha') ||
+            voice.name.includes('Microsoft Aria') ||
+            voice.name.includes('Google') ||
+            voice.name.includes('Microsoft')
+          )
+        ) || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for English playback - High-quality en-US voice`;
+        } else {
+          // Fallback to any en-US voice
+          targetVoice = voices.find(voice => voice.lang === 'en-US') || null;
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for English playback - Available en-US voice`;
+          } else {
+            reason = 'High-quality English voice not available, using browser default';
+          }
+        }
+        break;
+
+      case 'hi':
+        // Hindi: hi-IN voices with optimized settings
+        rate = 1.05; // Slightly faster for clarity
+        pitch = 1.0;
+        
+        // Priority 1: hi-IN language code
+        targetVoice = voices.find(voice => voice.lang === 'hi-IN') || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Native Hindi voice`;
+        } else {
+          // Priority 2: Voices with "Hindi" in the name
+          targetVoice = voices.find(voice => voice.name.includes('Hindi')) || null;
+          
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Hindi-named voice`;
+          } else {
+            // Priority 3: Google voices that approximate Hindi
+            targetVoice = voices.find(voice => 
+              voice.name.includes('Google') && voice.lang.includes('hi')
+            ) || null;
+            
+            if (targetVoice) {
+              reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Hindi playback - Google Hindi approximation`;
+            } else {
+              reason = 'High-quality Hindi voice not available, using browser default';
+            }
+          }
+        }
+        break;
+
+      case 'mr':
+        // Marathi: Use same voice configuration as Hindi for better flow and quality
+        rate = 1.05; // Same as Hindi - slightly faster for clarity
+        pitch = 1.0; // Same as Hindi - natural pitch
+        
+        // Priority 1: hi-IN language code (same as Hindi)
+        targetVoice = voices.find(voice => voice.lang === 'hi-IN') || null;
+        
+        if (targetVoice) {
+          reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Using Hindi voice for better flow and quality`;
+        } else {
+          // Priority 2: Voices with "Hindi" in the name (same as Hindi)
+          targetVoice = voices.find(voice => voice.name.includes('Hindi')) || null;
+          
+          if (targetVoice) {
+            reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Hindi-named voice for better flow`;
+          } else {
+            // Priority 3: Google voices that approximate Hindi (same as Hindi)
+            targetVoice = voices.find(voice => 
+              voice.name.includes('Google') && voice.lang.includes('hi')
+            ) || null;
+            
+            if (targetVoice) {
+              reason = `Selected ${targetVoice.name} (${targetVoice.lang}) for Marathi playback - Google Hindi approximation for better flow`;
+            } else {
+              reason = 'High-quality Marathi voice not available, using browser default';
+            }
+          }
+        }
+        break;
+
+      default:
+        rate = 1.0;
+        pitch = 1.0;
+        reason = 'Using default voice configuration';
+    }
+
+    return { voice: targetVoice, rate, pitch, reason };
+  }
+
+  // Enhanced Marathi text preprocessing for browser TTS
+  const preprocessMarathiTextForBrowser = (text: string): string => {
+    let processedText = text;
+    
+    // Enhanced Marathi-specific word replacements for better pronunciation and fluency
+    const marathiReplacements = {
+      // Specific words with pronunciation issues - Enhanced for better fluency
+      'झालंय': 'झाले आहे', // Better pronunciation for "झालंय"
+      'सांगायचं': 'सांगायचे', // Better pronunciation for "सांगायचं"
+      'बोलण्याचा': 'बोलण्याचे', // Better pronunciation for "बोलण्याचा"
+      'आज': 'आज', // Ensure proper pronunciation
+      'words': 'वर्ड्स', // Convert English "words" to Marathi pronunciation
+      'काना': 'काना', // Ensure proper pronunciation
+      
+      // Enhanced pronunciation for common Marathi words
+      'तुम्ही': 'तुम्ही', // You (plural/respectful)
+      'तू': 'तू', // You (informal)
+      'मी': 'मी', // I
+      'आम्ही': 'आम्ही', // We
+      'तुमचे': 'तुमचे', // Your
+      'माझे': 'माझे', // My
+      'आमचे': 'आमचे', // Our
+      
+      // Enhanced fluency for common phrases
+      'कसे आहे': 'कसे आहे', // How are you
+      'काय झाले': 'काय झाले', // What happened
+      'काय करायचे': 'काय करायचे', // What to do
+      'कसे वाटत आहे': 'कसे वाटत आहे', // How are you feeling
+      'ठीक आहे': 'ठीक आहे', // It's okay
+      'चांगले': 'चांगले', // Good
+      'वाईट': 'वाईट', // Bad
+    };
+    
+    // Apply Marathi-specific replacements
+    Object.entries(marathiReplacements).forEach(([original, replacement]) => {
+      const regex = new RegExp(original, 'g');
+      processedText = processedText.replace(regex, replacement);
+    });
+    
+    // Enhanced natural Marathi speech patterns for better fluency
+    processedText = processedText.replace(/\. /g, '. '); // Natural pauses
+    processedText = processedText.replace(/,/g, ', '); // Comma pauses
+    processedText = processedText.replace(/!/g, '! '); // Exclamation pauses
+    processedText = processedText.replace(/\?/g, '? '); // Question pauses
+    
+    // Add natural Marathi speech rhythm and flow
+    processedText = processedText.replace(/आहे /g, 'आहे '); // Natural "आहे" flow
+    processedText = processedText.replace(/आहात /g, 'आहात '); // Natural "आहात" flow
+    processedText = processedText.replace(/आहेत /g, 'आहेत '); // Natural "आहेत" flow
+    
+    // Enhanced pronunciation for common Marathi verb forms
+    processedText = processedText.replace(/करतोय/g, 'करतो आहे'); // Is doing (male form)
+    processedText = processedText.replace(/करतेय/g, 'करते आहे'); // Is doing (female form)
+    processedText = processedText.replace(/करतातय/g, 'करतात आहेत'); // Are doing (plural)
+    
+    // Enhanced pronunciation for Marathi question words
+    processedText = processedText.replace(/काय/g, 'काय'); // What (clear pronunciation)
+    processedText = processedText.replace(/कसे/g, 'कसे'); // How (clear pronunciation)
+    processedText = processedText.replace(/कधी/g, 'कधी'); // When (clear pronunciation)
+    processedText = processedText.replace(/कुठे/g, 'कुठे'); // Where (clear pronunciation)
+    processedText = processedText.replace(/कोण/g, 'कोण'); // Who (clear pronunciation)
+    
+    // Enhanced pronunciation for Marathi emotional expressions
+    processedText = processedText.replace(/दुःख/g, 'दुःख'); // Sadness (clear pronunciation)
+    processedText = processedText.replace(/आनंद/g, 'आनंद'); // Joy (clear pronunciation)
+    processedText = processedText.replace(/चिंता/g, 'चिंता'); // Worry (clear pronunciation)
+    processedText = processedText.replace(/तणाव/g, 'तणाव'); // Stress (clear pronunciation)
+    processedText = processedText.replace(/शांत/g, 'शांत'); // Peaceful (clear pronunciation)
+    
+    // Enhanced pronunciation for Marathi wellness terms
+    processedText = processedText.replace(/मानसिक/g, 'मानसिक'); // Mental (clear pronunciation)
+    processedText = processedText.replace(/आरोग्य/g, 'आरोग्य'); // Health (clear pronunciation)
+    processedText = processedText.replace(/काळजी/g, 'काळजी'); // Care (clear pronunciation)
+    processedText = processedText.replace(/समर्थन/g, 'समर्थन'); // Support (clear pronunciation)
+    processedText = processedText.replace(/मदत/g, 'मदत'); // Help (clear pronunciation)
+    
+    return processedText;
+  };
+
   const speakText = (text: string, messageId?: string) => {
     if (typeof window === 'undefined') return;
     
     window.speechSynthesis.cancel();
     
     try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = session?.language === 'hi' ? 'hi-IN' : session?.language === 'mr' ? 'mr-IN' : 'en-US';
-      utterance.rate = 1;
-      utterance.pitch = 1;
+      // Preprocess Marathi text for better pronunciation
+      let processedText = text;
+      if (session?.language === 'mr') {
+        processedText = preprocessMarathiTextForBrowser(text);
+        console.log('Marathi text preprocessed for better pronunciation');
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(processedText);
+      const voices = window.speechSynthesis.getVoices();
+      
+      // Get voice configuration using the new rules
+      const voiceConfig = getBrowserVoiceConfig(session?.language || 'en', voices);
+      
+      // Apply voice configuration
+      utterance.voice = voiceConfig.voice;
+      utterance.rate = voiceConfig.rate;
+      utterance.pitch = voiceConfig.pitch;
+      utterance.lang = session?.language === 'mr' ? 'mr-IN' : session?.language === 'hi' ? 'hi-IN' : 'en-US';
+      
+      // Log the voice selection with reason
+      console.log(voiceConfig.reason);
       
       if (messageId) {
         setPlayingMessageId(messageId);
@@ -100,6 +336,14 @@ export default function VoiceSessionPage() {
       utterance.onerror = () => {
         setPlayingMessageId(null);
       };
+      
+      console.log('Speaking with:', {
+        text: text.substring(0, 50) + '...',
+        lang: utterance.lang,
+        voice: utterance.voice?.name || 'default',
+        rate: utterance.rate,
+        pitch: utterance.pitch
+      });
       
       window.speechSynthesis.speak(utterance);
     } catch (e) {

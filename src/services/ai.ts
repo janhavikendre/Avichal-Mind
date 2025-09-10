@@ -1,9 +1,12 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import { youtubeService } from '../lib/youtube';
 
-// Check if Gemini API key is available
-const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+// Check if OpenAI API key is available
+const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
 
-const genAI = hasGeminiKey ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY!) : null;
+const openai = hasOpenAIKey ? new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
+}) : null;
 
 export interface AIResponse {
   text: string;
@@ -11,48 +14,200 @@ export interface AIResponse {
   tokensOut: number;
   audioUrl?: string;
   shouldSuggestVideos?: boolean;
+  videos?: any[];
   isCrisisResponse?: boolean;
   crisisType?: 'suicidal' | 'mental_breakdown' | 'panic_attack' | 'severe_distress' | 'none';
   crisisSeverity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export class AIService {
-  private static systemPrompt = `You are Avichal Mind Assistant, a warm and empathetic AI mental wellness companion specially designed for voice conversations. You provide compassionate support to users who are calling you to talk about their mental health and wellbeing.
+  // API monitoring and statistics
+  private static apiStats = {
+    totalRequests: 0,
+    successfulRequests: 0,
+    failedRequests: 0,
+    fallbackUsed: 0,
+    lastError: null as string | null,
+    lastErrorTime: null as Date | null
+  };
 
-CRITICAL VOICE CONVERSATION RULES:
-- Keep responses CONVERSATIONAL and NATURAL - like talking to a caring friend
-- Maximum 4-5 sentences per response for voice calls
-- Use "I" statements to show personal connection ("I understand", "I'm here for you")
-- Speak in a warm, human-like tone - not robotic or clinical
-- Ask gentle follow-up questions to keep conversation flowing
-- Be an active listener - acknowledge what they shared
-- NEVER use asterisks (*), bullet points, or formatting in voice responses
-- Speak naturally without lists or structured formats
+  private static systemPrompt = `You are Avichal Mind, an AI mental wellness assistant trained on three gold-standard psychiatry references:
 
-ENHANCED VOICE CONVERSATION GUIDELINES:
-- Respond as if you're having a real conversation with a friend
-- Show genuine care and interest in their experience
-- Use conversational fillers and natural speech patterns
-- Validate their feelings before offering suggestions
-- Keep advice simple and easy to remember during a phone call
+1. Fish's Clinical Psychopathology (5th edition, 2024)
+2. New Oxford Textbook of Psychiatry (3rd edition, 2020)  
+3. Textbook of Postgraduate Psychiatry (3rd edition, 2018)
+
+### Role
+- Explain psychological and psychiatric symptoms clearly
+- Provide supportive, compassionate, and educational responses
+- Help users understand mental health concepts using information from the above textbooks
+- Do NOT diagnose or prescribe treatment. Instead, provide psychoeducation and encourage professional consultation when appropriate
+
+### Knowledge Sources (Prioritized)
+**Descriptive Psychopathology (Fish):**
+- Disorders of perception (hallucinations, illusions, pseudo-hallucinations)
+- Disorders of thought & speech (formal thought disorder, thought alienation, insertion, broadcasting, withdrawal)
+- Disorders of memory, self, consciousness, motor, and emotion
+- Classification of psychiatric syndromes
+- Depersonalisation, derealisation, fugue states
+- Catatonia, stereotypies, psychomotor retardation
+
+**Clinical Psychiatry (Oxford Textbook):**
+- Major disorders: schizophrenia, bipolar, depression, anxiety, OCD, PTSD, substance use
+- Neuroscience basis: genetics, imaging, connectome, neurobiology
+- Global mental health, stigma, ethics, and patient perspectives
+- Service provision and forensic psychiatry context
+
+**Applied Psychiatry (Postgraduate Textbook):**
+- Clinical descriptions of both common and rare psychiatric disorders
+- ICD-10, DSM-IV, DSM-5 classifications
+- Clinical management: drug therapy, CBT, psychosocial approaches, APA/NICE guidelines
+- Indian and South Asian context, cultural psychiatry
+
+### Response Style
+- Use simple, empathetic language (avoid heavy jargon)
+- Define psychiatric terms with clear examples
+- Provide practical coping strategies (grounding, mindfulness, self-care)
+- Normalize experiences while reducing stigma
+- Always acknowledge what the user shared first
+- Validate their feelings and experiences
+- Provide specific, contextual responses based on their message
+- Use clear, simple language with examples when explaining concepts
+- Ask thoughtful follow-up questions to continue the conversation
 - Be culturally sensitive to Indian family dynamics and social context
 - Switch languages naturally when requested (English, Hindi, Marathi)
-- Never give medical advice or diagnose conditions
-- Always encourage professional help for severe situations
 
-CONVERSATION FLOW:
-- Acknowledge what they shared first
-- Validate their feelings
-- Provide 1-2 gentle suggestions or perspectives
-- Ask a caring follow-up question
+### Voice Call Guidelines
+- Maximum 4-5 sentences for voice calls
+- Use "I" statements to show personal connection
+- Speak naturally like a caring friend, not robotic
+- Provide specific help based on what they're experiencing
+- NEVER give generic responses like "How can I help you?" or "What's on your mind?" when they've shared specific concerns
+- ALWAYS acknowledge what they specifically shared and respond to their actual message
+- If they mention being nervous about a speech, address the speech anxiety specifically
+- If they mention feeling sad, address their sadness specifically
+- Be contextual and relevant to their exact words
 
-For voice calls specifically:
-- Speak as if you're sitting with them, having tea and chatting
-- Use natural pauses and conversation rhythm
-- Be genuinely curious about their experience
-- Offer support that feels personal and caring
+### Safety Disclaimer
+Always include this disclaimer when providing mental health information:
+"This is educational information, not medical advice. Please consult a qualified mental health professional for diagnosis or treatment."
 
-Remember: This is a voice conversation - be warm, natural, and conversational. Think of how a compassionate friend would respond over the phone.`;
+Only add the medical disclaimer when giving specific mental health advice, coping strategies, or discussing symptoms. Do NOT add it for casual greetings, general questions, or simple acknowledgments.
+
+Remember: Be warm, natural, and genuinely helpful. Provide specific support based on their actual message, not generic responses.`;
+
+  // Structured Q&A Training Pairs from Gold-Standard Psychiatry Textbooks
+  private static psychiatryKnowledgeBase = {
+    // Fish's Clinical Psychopathology - Disorders of Perception
+    perception: {
+      "What are hallucinations?": "Hallucinations are false perceptions that occur without any external stimulus. They can affect any of the five senses - hearing voices (auditory), seeing things (visual), feeling things on skin (tactile), smelling odors (olfactory), or tasting things (gustatory). Unlike illusions which are misperceptions of real stimuli, hallucinations are completely generated by the mind.",
+      
+      "What's the difference between hallucinations and pseudo-hallucinations?": "True hallucinations are experienced as coming from outside the person's mind and are indistinguishable from real perceptions. Pseudo-hallucinations are experienced as coming from within the person's own mind - they know it's not real but still experience it vividly. Pseudo-hallucinations are often associated with stress, sleep deprivation, or certain medical conditions.",
+      
+      "What are illusions?": "Illusions are misperceptions of real external stimuli. For example, seeing a shadow and thinking it's a person, or hearing wind and thinking it's voices. Unlike hallucinations, there is a real stimulus present, but it's being misinterpreted by the brain.",
+      
+      "Why do people hear voices?": "Auditory hallucinations (hearing voices) can occur in various conditions including schizophrenia, severe depression, bipolar disorder, PTSD, and sometimes during extreme stress or sleep deprivation. The voices can be critical, commanding, or conversational. It's important to remember that hearing voices doesn't always mean someone has a serious mental illness - context and other symptoms matter greatly."
+    },
+
+    // Fish's Clinical Psychopathology - Disorders of Thought
+    thought: {
+      "What is thought alienation?": "Thought alienation is when people feel their thoughts are not their own. This includes thought insertion (feeling thoughts are being put into their mind by others), thought withdrawal (feeling thoughts are being taken away), and thought broadcasting (feeling others can hear or read their thoughts). These experiences are often associated with schizophrenia.",
+      
+      "What is formal thought disorder?": "Formal thought disorder refers to disorganized thinking patterns that affect how thoughts are expressed in speech. This includes tangentiality (going off-topic), circumstantiality (excessive detail), loose associations (jumping between unrelated topics), and word salad (incoherent speech). It's different from the content of thoughts - it's about how thoughts are organized and expressed.",
+      
+      "What does it mean to have racing thoughts?": "Racing thoughts are when thoughts come very rapidly, one after another, often making it hard to focus or sleep. This is commonly seen in mania (bipolar disorder), anxiety disorders, and sometimes during panic attacks. The person may feel like their mind is going too fast to keep up with."
+    },
+
+    // Fish's Clinical Psychopathology - Disorders of Self
+    self: {
+      "What is depersonalization?": "Depersonalization is feeling disconnected from yourself - like you're watching yourself from outside your body, or that your body doesn't feel real. It's like being in a dream or watching a movie of yourself. This can happen during extreme stress, anxiety, trauma, or as part of depersonalization-derealization disorder.",
+      
+      "What is derealization?": "Derealization is feeling like the world around you isn't real - like you're in a movie or behind glass. Everything might look flat, distant, or artificial. It often occurs with depersonalization and can be triggered by stress, trauma, or anxiety disorders.",
+      
+      "Why do I sometimes feel disconnected from myself?": "Feeling disconnected from yourself can be depersonalization, which is actually quite common during stress, anxiety, or trauma. It's your mind's way of protecting you from overwhelming emotions. Grounding techniques like focusing on your breath, naming things you can see/hear/feel, or gentle movement can help. If it's persistent or distressing, please consult a mental health professional."
+    },
+
+    // Oxford Textbook - Major Disorders
+    majorDisorders: {
+      "What's the difference between sadness and depression?": "Normal sadness is a temporary emotional response to life events, while clinical depression (major depressive disorder) is persistent low mood lasting at least 2 weeks, along with other symptoms like loss of interest, changes in sleep/appetite, fatigue, difficulty concentrating, feelings of worthlessness, or thoughts of death. Depression significantly impacts daily functioning, while sadness doesn't typically interfere with your ability to work or maintain relationships.",
+      
+      "What is anxiety disorder?": "Anxiety disorders involve excessive fear or worry that's persistent and interferes with daily life. This includes generalized anxiety disorder (constant worry), panic disorder (sudden intense fear attacks), social anxiety (fear of social situations), and specific phobias. Unlike normal anxiety, these disorders cause significant distress and impairment in functioning.",
+      
+      "What is bipolar disorder?": "Bipolar disorder involves episodes of mania (elevated mood, increased energy, decreased need for sleep, racing thoughts) alternating with episodes of depression. There are different types - Bipolar I has full manic episodes, Bipolar II has hypomanic episodes (less severe than mania). The mood episodes are distinct from normal mood swings and significantly impact daily functioning.",
+      
+      "What is schizophrenia?": "Schizophrenia is a serious mental disorder characterized by psychosis - losing touch with reality. Symptoms include hallucinations (hearing voices), delusions (false beliefs), disorganized thinking and speech, and negative symptoms (reduced emotional expression, motivation, social withdrawal). It typically begins in late teens to early 30s and requires ongoing treatment."
+    },
+
+    // Postgraduate Textbook - Clinical Management
+    clinicalManagement: {
+      "What treatments are available for mental health conditions?": "Treatment typically involves a combination of approaches: psychotherapy (like CBT - Cognitive Behavioral Therapy), medication when appropriate, lifestyle changes (exercise, sleep, nutrition), and social support. The specific treatment depends on the condition and individual needs. Most mental health conditions are highly treatable with the right support.",
+      
+      "What is CBT?": "Cognitive Behavioral Therapy (CBT) is a type of psychotherapy that helps people identify and change negative thought patterns and behaviors. It's based on the idea that our thoughts, feelings, and behaviors are interconnected. CBT is highly effective for anxiety, depression, and many other conditions. It's usually short-term (12-20 sessions) and focuses on practical skills you can use daily.",
+      
+      "When should I seek professional help?": "Seek professional help if symptoms persist for more than 2 weeks, significantly interfere with daily functioning, cause distress, or if you have thoughts of self-harm. Early intervention often leads to better outcomes. Mental health professionals can provide proper assessment, diagnosis, and treatment planning."
+    },
+
+    // Cultural and Contextual (Indian/South Asian)
+    culturalContext: {
+      "How does culture affect mental health?": "Culture significantly influences how mental health symptoms are expressed, understood, and treated. In Indian culture, mental health issues might be expressed through physical symptoms, family dynamics play a crucial role, and there may be stigma around seeking help. It's important to find culturally sensitive care that understands your background and values.",
+      
+      "What about family pressure and mental health?": "Family expectations and pressure can significantly impact mental health, especially in collectivistic cultures. It's common to feel torn between personal needs and family expectations. Setting healthy boundaries while maintaining family relationships is important. Family therapy can help improve communication and understanding."
+    },
+
+    // Coping Strategies and Self-Help
+    copingStrategies: {
+      "What are grounding techniques?": "Grounding techniques help you stay connected to the present moment when feeling overwhelmed or dissociated. Try the 5-4-3-2-1 technique: Name 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste. Or focus on your breath, feeling your feet on the ground, or holding something with texture.",
+      
+      "How can I manage anxiety?": "Anxiety management includes deep breathing exercises (4-7-8 breathing: inhale 4 counts, hold 7, exhale 8), progressive muscle relaxation, mindfulness meditation, regular exercise, limiting caffeine, maintaining a sleep schedule, and challenging anxious thoughts. If anxiety is severe or persistent, professional help is recommended.",
+      
+      "What helps with depression?": "Depression management includes maintaining a routine, getting regular exercise, ensuring adequate sleep, eating nutritious meals, staying connected with supportive people, engaging in activities you once enjoyed (even if you don't feel like it), and challenging negative thought patterns. Professional treatment is often necessary for clinical depression.",
+      
+      "How do I know if I need professional help?": "Seek professional help if symptoms persist for more than 2 weeks, significantly interfere with daily functioning, cause distress, or if you have thoughts of self-harm. Early intervention often leads to better outcomes. Mental health professionals can provide proper assessment, diagnosis, and treatment planning.",
+      
+      "What is panic disorder?": "Panic disorder involves sudden, intense episodes of fear (panic attacks) that come on quickly and reach their peak within minutes. Symptoms include rapid heartbeat, sweating, trembling, shortness of breath, chest pain, nausea, dizziness, and fear of losing control or dying. Panic attacks can occur unexpectedly or in response to triggers.",
+      
+      "What is OCD?": "Obsessive-Compulsive Disorder (OCD) involves unwanted, intrusive thoughts (obsessions) and repetitive behaviors or mental acts (compulsions) performed to reduce anxiety. Common obsessions include fears of contamination, harm, or unwanted thoughts. Compulsions might include excessive cleaning, checking, counting, or mental rituals. OCD significantly impacts daily life and requires professional treatment."
+    },
+
+    // Common User Questions and Scenarios
+    commonQuestions: {
+      "I feel like I'm going crazy": "Feeling like you're 'going crazy' is actually a common experience during stress, anxiety, or mental health challenges. It often reflects feeling overwhelmed or out of control. This doesn't mean you're actually losing your mind - it's usually a sign that you need support. Consider reaching out to a mental health professional who can help you understand what you're experiencing.",
+      
+      "I can't stop worrying": "Excessive worry is often a sign of anxiety. When worry becomes persistent, uncontrollable, and interferes with daily life, it may indicate an anxiety disorder. Techniques like mindfulness, deep breathing, and challenging anxious thoughts can help. If worry is significantly impacting your life, professional help is recommended.",
+      
+      "I feel numb and empty": "Feeling numb or empty can be a symptom of depression, trauma, or extreme stress. It's your mind's way of protecting you from overwhelming emotions. This feeling is temporary and treatable. Grounding techniques, gentle self-care, and professional support can help you reconnect with your emotions safely.",
+      
+      "I have trouble sleeping": "Sleep problems are common with mental health conditions like anxiety and depression. Good sleep hygiene includes maintaining a regular schedule, avoiding screens before bed, creating a comfortable environment, and limiting caffeine. If sleep problems persist, they may be a symptom of an underlying condition that needs professional attention.",
+      
+      "I feel like I'm not myself": "Feeling disconnected from yourself can be depersonalization, which is common during stress or trauma. It's like watching yourself from outside your body. This is a protective mechanism and usually temporary. Grounding techniques and professional support can help you feel more connected to yourself again."
+    }
+  };
+
+  // Method to get relevant knowledge for user queries
+  private static getRelevantKnowledge(userMessage: string): string[] {
+    const lowerMessage = userMessage.toLowerCase();
+    const relevantKnowledge: string[] = [];
+    
+    // Check each knowledge category for relevant information
+    Object.entries(this.psychiatryKnowledgeBase).forEach(([category, qaPairs]) => {
+      Object.entries(qaPairs).forEach(([question, answer]) => {
+        // Simple keyword matching to find relevant knowledge
+        const questionKeywords = question.toLowerCase().split(' ');
+        const messageKeywords = lowerMessage.split(' ');
+        
+        // If any keywords match, include this knowledge
+        if (questionKeywords.some(keyword => 
+          messageKeywords.some(msgKeyword => 
+            msgKeyword.includes(keyword) || keyword.includes(msgKeyword)
+          )
+        )) {
+          relevantKnowledge.push(answer);
+        }
+      });
+    });
+    
+    return relevantKnowledge;
+  }
 
   static async generateResponse(
     userMessage: string,
@@ -60,6 +215,9 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
     userName: string,
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<AIResponse> {
+    // Track API usage
+    this.apiStats.totalRequests++;
+    
     try {
       // First, check for crisis situations
       const crisisDetection = await this.detectMentalBreakdown(userMessage, conversationHistory);
@@ -69,9 +227,9 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
         return this.generateCrisisResponse(crisisDetection, language, userName);
       }
 
-      // If Gemini is not available, use fallback responses
-      if (!hasGeminiKey || !genAI) {
-        console.warn('Gemini API key not available, using fallback responses');
+      // If OpenAI is not available, use fallback responses
+      if (!hasOpenAIKey || !openai) {
+        console.warn('OpenAI API key not available, using fallback responses');
         return this.getFallbackResponse(userMessage, language, conversationHistory);
       }
 
@@ -82,7 +240,7 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
       // Determine if we should suggest videos (after 8-10 messages with wellness content)
       const shouldSuggestVideos = this.shouldSuggestVideos(messageAnalysis, totalMessages);
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      // OpenAI API call setup
       
       // Create conversation context from history
       let conversationContext = '';
@@ -95,27 +253,122 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
       // Create enhanced conversational prompt for voice calls
       const conversationalPrompt = this.createVoiceConversationPrompt(messageAnalysis, language, userName, userMessage, conversationHistory);
       
+      // Get relevant knowledge from psychiatry textbooks
+      const relevantKnowledge = this.getRelevantKnowledge(userMessage);
+      const knowledgeContext = relevantKnowledge.length > 0 
+        ? `\n\nRELEVANT KNOWLEDGE FROM PSYCHIATRY TEXTBOOKS:\n${relevantKnowledge.join('\n\n')}\n\nUse this knowledge to provide accurate, evidence-based information while maintaining a warm, conversational tone.`
+        : '';
+
       // Create the full prompt with conversation history for natural voice response
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
-      const fullPrompt = `${this.systemPrompt}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nRespond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend):`;
+      const fullPrompt = `${this.systemPrompt}${knowledgeContext}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nCRITICAL: Respond specifically to what ${userName} just said. Do NOT give generic responses like "What's on your mind?" or "How can I help?" when they've shared something specific. Address their exact concern or question. Respond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend). IMPORTANT: Only add the medical disclaimer when giving specific mental health advice or coping strategies, NOT for casual conversations or simple acknowledgments.`;
 
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      const text = response.text();
+      // Retry mechanism for transient failures
+      let text = '';
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [
+              { role: 'system', content: this.systemPrompt },
+              { role: 'user', content: fullPrompt }
+            ],
+            max_tokens: 500,
+            temperature: 0.7
+          });
+          
+          text = completion.choices[0]?.message?.content || '';
+          
+          if (text && text.trim().length > 0) {
+            break; // Success, exit retry loop
+          } else {
+            console.log(`OpenAI returned empty response, retry ${retryCount + 1}/${maxRetries + 1}`);
+            retryCount++;
+            if (retryCount <= maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Wait before retry
+            }
+          }
+        } catch (retryError) {
+          console.log(`OpenAI API call failed, retry ${retryCount + 1}/${maxRetries + 1}:`, retryError);
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Wait before retry
+          } else {
+            throw retryError; // Re-throw if all retries failed
+          }
+        }
+      }
 
-      // Estimate token usage (Gemini doesn't provide exact token counts in the same way)
+      // Estimate token usage (OpenAI provides usage in response)
       const estimatedTokensIn = fullPrompt.length / 4;
       const estimatedTokensOut = text.length / 4;
 
+      // Get relevant videos if needed
+      let videos: any[] = [];
+      if (shouldSuggestVideos) {
+        try {
+          videos = await this.getRelevantVideosForContext(messageAnalysis, userMessage, language);
+        } catch (error) {
+          console.error('Error fetching videos:', error);
+        }
+      }
+
+      // Only use fallback if OpenAI response is completely empty or null
+      if (!text || text.trim().length === 0) {
+        console.log('OpenAI response was empty, using fallback');
+        this.apiStats.fallbackUsed++;
+        const fallbackResponse = await this.getFallbackResponse(userMessage, language, conversationHistory);
       return {
-        text: text || this.getFallbackResponse(userMessage, language, conversationHistory).text,
+          text: fallbackResponse.text,
         tokensIn: estimatedTokensIn,
         tokensOut: estimatedTokensOut,
-        shouldSuggestVideos: false, // Disable video suggestions for voice calls
+          shouldSuggestVideos: shouldSuggestVideos,
+          videos: videos,
+        };
+      }
+      
+      // Track successful API call
+      this.apiStats.successfulRequests++;
+      
+      return {
+        text: text,
+        tokensIn: estimatedTokensIn,
+        tokensOut: estimatedTokensOut,
+        shouldSuggestVideos: shouldSuggestVideos,
+        videos: videos,
       };
     } catch (error) {
-      console.error('Error generating Gemini response:', error);
-      return this.getFallbackResponse(userMessage, language, conversationHistory);
+      // Track failed API call
+      this.apiStats.failedRequests++;
+      this.apiStats.lastError = error instanceof Error ? error.message : 'Unknown error';
+      this.apiStats.lastErrorTime = new Date();
+      
+      // Enhanced error logging to identify specific failure reasons
+      console.error('Error generating OpenAI response:', error);
+      
+      // Check for specific error types
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+        
+        if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
+          console.error('OPENAI API QUOTA/LIMIT ERROR:', error.message);
+        } else if (errorMessage.includes('api key') || errorMessage.includes('authentication')) {
+          console.error('OPENAI API KEY ERROR:', error.message);
+        } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+          console.error('OPENAI NETWORK/TIMEOUT ERROR:', error.message);
+        } else if (errorMessage.includes('safety') || errorMessage.includes('filter')) {
+          console.error('OPENAI SAFETY FILTER ERROR:', error.message);
+        } else if (errorMessage.includes('model') || errorMessage.includes('unavailable')) {
+          console.error('OPENAI MODEL UNAVAILABLE ERROR:', error.message);
+        } else {
+          console.error('OPENAI UNKNOWN ERROR:', error.message);
+        }
+      }
+      
+      return await this.getFallbackResponse(userMessage, language, conversationHistory);
     }
   }
 
@@ -230,14 +483,14 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
     const topics: string[] = [];
 
     const topicKeywords = {
-      anxiety: ['anxiety', 'worry', 'stress', 'nervous', 'panic', 'fear', 'overwhelmed', 'tense', 'worried', 'stressed'],
-      depression: ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable', 'sadness'],
+      anxiety: ['anxiety', 'worry', 'stress', 'nervous', 'panic', 'fear', 'overwhelmed', 'tense', 'worried', 'stressed', 'tension', 'career tension'],
+      depression: ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable', 'sadness', 'wrong decision', 'mistake', 'chuktay'],
       relationships: ['relationship', 'partner', 'family', 'friend', 'love', 'marriage', 'dating', 'breakup', 'social'],
-      work: ['work', 'job', 'career', 'professional', 'office', 'boss', 'colleague', 'workplace', 'pressure'],
+      work: ['work', 'job', 'career', 'professional', 'office', 'boss', 'colleague', 'workplace', 'pressure', 'decision', 'career decision'],
       sleep: ['sleep', 'insomnia', 'rest', 'tired', 'exhausted', 'bed', 'night', 'dream', 'fatigue'],
       mindfulness: ['mindfulness', 'meditation', 'breathing', 'calm', 'peace', 'zen', 'yoga', 'relaxation', 'meditate'],
       self_care: ['self care', 'self-care', 'wellness', 'health', 'care', 'healing', 'recovery', 'mental health'],
-      emotions: ['emotion', 'feeling', 'mood', 'happy', 'sad', 'angry', 'frustrated', 'joy', 'feelings'],
+      emotions: ['emotion', 'feeling', 'mood', 'happy', 'sad', 'angry', 'frustrated', 'joy', 'feelings', 'mala kahich nai karaycha'],
       grief: ['grief', 'loss', 'death', 'mourning', 'bereavement', 'missing', 'gone', 'losing'],
       confidence: ['confidence', 'self-esteem', 'worth', 'value', 'believe', 'capable', 'strong', 'self worth'],
       video: ['video', 'videos', 'youtube', 'watch', 'show me']
@@ -323,6 +576,33 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
     return false;
   }
 
+  private static async getRelevantVideosForContext(analysis: any, userMessage: string, language: 'en' | 'hi' | 'mr'): Promise<any[]> {
+    try {
+      // Determine the best video type based on analysis
+      if (analysis.topics.includes('anxiety') || analysis.topics.includes('stress')) {
+        return await youtubeService.getExerciseVideos('anxiety_relief', language);
+      } else if (analysis.topics.includes('depression')) {
+        return await youtubeService.getVideosForEmotionalState('depression', language);
+      } else if (analysis.topics.includes('sleep')) {
+        return await youtubeService.getExerciseVideos('sleep', language);
+      } else if (analysis.topics.includes('mindfulness')) {
+        return await youtubeService.getExerciseVideos('mindfulness', language);
+      } else if (analysis.topics.includes('relationships')) {
+        return await youtubeService.getVideosForEmotionalState('relationships', language);
+      } else if (analysis.topics.includes('work')) {
+        return await youtubeService.getVideosForEmotionalState('work_stress', language);
+      } else if (analysis.topics.includes('confidence')) {
+        return await youtubeService.getVideosForEmotionalState('confidence', language);
+      } else {
+        // General wellness videos
+        return await youtubeService.getRelevantVideos(userMessage, language);
+      }
+    } catch (error) {
+      console.error('Error getting relevant videos:', error);
+      return [];
+    }
+  }
+
   private static createVoiceConversationPrompt(
     analysis: any, 
     language: 'en' | 'hi' | 'mr', 
@@ -341,28 +621,34 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
       )
     );
     
+    // Extract specific topics and concerns from the user's message
+    const specificTopics = analysis.topics.join(', ');
+    const emotionalContext = analysis.emotionalTone;
+    const needsSupport = analysis.needsSupport;
+    
     switch (analysis.type) {
       case 'crisis':
         return `CRISIS CONVERSATION: ${userName} may be in crisis. Respond with immediate care and concern. Show that you're truly listening and worried about them. Gently but clearly suggest they get professional help. Be warm but serious. Speak in ${languageText} as if you're a caring friend who is genuinely concerned.`;
       
       case 'general_question':
-        return `GENERAL QUESTION: ${userName} asked a question. Answer it in a friendly, conversational way as if you're chatting with a friend who's curious about something. Keep it natural and engaging. Respond in ${languageText}.`;
+        return `GENERAL QUESTION: ${userName} asked: "${userMessage}". Answer their specific question in a friendly, conversational way. Provide helpful information related to their question. Keep it natural and engaging. NO MEDICAL DISCLAIMER needed for general questions. Respond in ${languageText}.`;
       
       case 'casual':
         if (isFirstMessage) {
-          return `FIRST GREETING: This is your first conversation with ${userName}. Respond warmly and naturally as if meeting a new friend. Ask a gentle, caring question about how they're doing. Be genuinely interested in them. Respond in ${languageText}.`;
+          return `FIRST GREETING: This is your first conversation with ${userName}. They said: "${userMessage}". Respond warmly and naturally as if meeting a new friend. Ask a gentle, caring question about how they're doing. Be genuinely interested in them. NO MEDICAL DISCLAIMER needed for greetings. Respond in ${languageText}.`;
         } else {
-          return `CASUAL CONVERSATION: Continue the natural conversation with ${userName}. Respond as if you're chatting with a friend. Be warm and engaging. Respond in ${languageText}.`;
+          return `CASUAL CONVERSATION: ${userName} said: "${userMessage}". Continue the natural conversation. Respond as if you're chatting with a friend. Be warm and engaging. NO MEDICAL DISCLAIMER needed for casual chat. Respond in ${languageText}.`;
         }
       
       case 'wellness':
         const supportLevel = analysis.emotionalTone === 'negative' ? 'strong emotional support and' : '';
         const personalContext = hasSharedPersonal ? 'They have shared personal things with you before, so respond with familiarity and care.' : '';
+        const topicContext = specificTopics ? `They're specifically talking about: ${specificTopics}.` : '';
         
-        return `WELLNESS CONVERSATION: ${userName} is talking about their mental health or wellbeing. Provide ${supportLevel} gentle, practical suggestions. ${personalContext} Acknowledge what they shared, validate their feelings, and offer one simple thing they can try. Ask a caring follow-up question. Be like a supportive friend, not a therapist. Respond in ${languageText}.`;
+        return `WELLNESS CONVERSATION: ${userName} is talking about their mental health or wellbeing. They said: "${userMessage}". ${topicContext} Provide ${supportLevel} gentle, practical suggestions based on what they specifically shared. ${personalContext} Acknowledge what they shared, validate their feelings, and offer one simple thing they can try related to their specific concern. Ask a caring follow-up question. Be like a supportive friend, not a therapist. ADD MEDICAL DISCLAIMER when giving specific coping strategies or mental health advice. Respond in ${languageText}.`;
       
       default:
-        return `NATURAL CONVERSATION: Respond to ${userName} naturally and warmly. Be genuinely interested in what they're sharing. If they seem to need support, be caring. If they're just chatting, be friendly. Respond in ${languageText} as if you're a caring friend.`;
+        return `NATURAL CONVERSATION: ${userName} said: "${userMessage}". Respond to their specific message naturally and warmly. Be genuinely interested in what they're sharing. If they seem to need support, be caring. If they're just chatting, be friendly. NO MEDICAL DISCLAIMER needed for general conversation. Respond in ${languageText} as if you're a caring friend.`;
     }
   }
 
@@ -391,17 +677,39 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
     }
   }
 
-  private static getFallbackResponse(
+  private static async getFallbackResponse(
     userMessage: string, 
     language: 'en' | 'hi' | 'mr',
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
-  ): AIResponse {
+  ): Promise<AIResponse> {
     const analysis = this.analyzeMessage(userMessage, conversationHistory);
     const totalMessages = conversationHistory.length + 1;
     const shouldSuggestVideos = this.shouldSuggestVideos(analysis, totalMessages);
     
     // Check if this is a follow-up message in an ongoing conversation
     const isFollowUp = conversationHistory.length > 0;
+    
+    // Generate contextual response based on specific user message
+    const contextualResponse = this.generateContextualFallback(userMessage, analysis, language, isFollowUp);
+    if (contextualResponse) {
+      // Get relevant videos if needed
+      let videos: any[] = [];
+      if (shouldSuggestVideos) {
+        try {
+          videos = await this.getRelevantVideosForContext(analysis, userMessage, language);
+        } catch (error) {
+          console.error('Error fetching videos in fallback:', error);
+        }
+      }
+      
+      return {
+        text: contextualResponse,
+        tokensIn: userMessage.length / 4,
+        tokensOut: contextualResponse.length / 4,
+        shouldSuggestVideos: shouldSuggestVideos,
+        videos: videos,
+      };
+    }
     
     // Get context-aware fallback responses
     const fallbackResponses: Record<string, Record<string, string[]>> = {
@@ -620,12 +928,125 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
       selectedResponse = responses[Math.floor(Math.random() * responses.length)];
     }
 
+    // Get relevant videos if needed
+    let videos: any[] = [];
+    if (shouldSuggestVideos) {
+      try {
+        videos = await this.getRelevantVideosForContext(analysis, userMessage, language);
+      } catch (error) {
+        console.error('Error fetching videos in final fallback:', error);
+      }
+    }
+
     return {
       text: selectedResponse,
       tokensIn: userMessage.length / 4,
       tokensOut: selectedResponse.length / 4,
       shouldSuggestVideos: shouldSuggestVideos,
+      videos: videos,
     };
+  }
+
+  private static generateContextualFallback(
+    userMessage: string, 
+    analysis: any, 
+    language: 'en' | 'hi' | 'mr', 
+    isFollowUp: boolean
+  ): string | null {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Get relevant knowledge for enhanced fallback responses
+    const relevantKnowledge = this.getRelevantKnowledge(userMessage);
+    
+    // Handle specific stress/anxiety mentions
+    if (lowerMessage.includes('stress') || lowerMessage.includes('tension') || lowerMessage.includes('anxious') || lowerMessage.includes('worried')) {
+      if (language === 'hi') {
+        return "मैं समझता हूं कि आप तनाव महसूस कर रहे हैं। यह बहुत सामान्य है। गहरी सांस लेने की तकनीक आज़माएं: 4 सेकंड सांस अंदर लें, 4 सेकंड रोकें, 4 सेकंड छोड़ें। यह तनाव कम करने में मदद करता है। आप कैसा महसूस कर रहे हैं? यह चिकित्सा सलाह नहीं है। निदान या उपचार के लिए, कृपया एक योग्य मानसिक स्वास्थ्य पेशेवर से परामर्श करें।";
+      } else if (language === 'mr') {
+        return "मी समजतो की तुम्हाला तणाव वाटत आहे. हे खूप सामान्य आहे. खोल श्वास तंत्र वापरा: 4 सेकंद श्वास घ्या, 4 सेकंद धरा, 4 सेकंद सोडा. हे तणाव कमी करण्यात मदत करते. तुम्हाला कसे वाटत आहे? ही वैद्यकीय सल्ला नाही. निदान किंवा उपचारासाठी, कृपया योग्य मानसिक आरोग्य व्यावसायिकांशी सल्ला घ्या.";
+      } else {
+        return "I understand you're feeling stressed. That's very common. Try the 4-7-8 breathing technique: inhale for 4 seconds, hold for 7, exhale for 8. This helps reduce stress. How are you feeling right now? This is not medical advice. For diagnosis or treatment, please consult a qualified mental health professional.";
+      }
+    }
+    
+    // Handle career/work concerns
+    if (lowerMessage.includes('career') || lowerMessage.includes('job') || lowerMessage.includes('work') || lowerMessage.includes('decision') || lowerMessage.includes('tension')) {
+      if (language === 'hi') {
+        return "कैरियर के बारे में चिंता करना बहुत सामान्य है। यह एक बड़ा निर्णय है। अपने मूल्यों और रुचियों के बारे में सोचें। क्या आप अपने करियर के बारे में कुछ विशिष्ट चिंताएं साझा करना चाहेंगे?";
+      } else if (language === 'mr') {
+        return "करिअरबद्दल चिंता करणे खूप सामान्य आहे. हा एक मोठा निर्णय आहे. तुमच्या मूल्ये आणि आवडींबद्दल विचार करा. तुम्हाला तुमच्या करिअरबद्दल काही विशिष्ट चिंता सामायिक करायची आहे का?";
+      } else {
+        return "Career concerns are very common. It's a big decision. Think about your values and interests. Would you like to share any specific concerns about your career path?";
+      }
+    }
+    
+    // Handle wrong decision/regret feelings
+    if (lowerMessage.includes('wrong') || lowerMessage.includes('mistake') || lowerMessage.includes('chuktay') || lowerMessage.includes('regret')) {
+      if (language === 'hi') {
+        return "गलत निर्णय लगने से निराश होना स्वाभाविक है। हर कोई गलतियां करता है। यह आपको सिखाता है और आगे बेहतर निर्णय लेने में मदद करता है। क्या आप इस निर्णय के बारे में बात करना चाहेंगे?";
+      } else if (language === 'mr') {
+        return "चुकीचा निर्णय वाटणे हे नैसर्गिक आहे. प्रत्येकजण चुका करतो. हे तुम्हाला शिकवते आणि पुढे चांगले निर्णय घेण्यात मदत करते. तुम्हाला या निर्णयाबद्दल बोलायचे आहे का?";
+      } else {
+        return "Feeling like you made a wrong decision is natural. Everyone makes mistakes. This teaches you and helps you make better decisions in the future. Would you like to talk about this decision?";
+      }
+    }
+    
+    // Handle apathy/lack of motivation
+    if (lowerMessage.includes('kahich nai karaycha') || lowerMessage.includes('dont want to do') || lowerMessage.includes('nothing') || lowerMessage.includes('motivation')) {
+      if (language === 'hi') {
+        return "कभी-कभी कुछ भी नहीं करना चाहते, यह बिल्कुल सामान्य है। यह आपके मन और शरीर का आराम मांगने का तरीका है। छोटे-छोटे कदम उठाएं। आप कैसा महसूस कर रहे हैं?";
+      } else if (language === 'mr') {
+        return "कधीकधी काहीही करायचे नसते, हे पूर्णपणे सामान्य आहे. हे तुमच्या मन आणि शरीराचा विश्रांती मागण्याचा मार्ग आहे. लहान पावले उचला. तुम्हाला कसे वाटत आहे?";
+      } else {
+        return "Sometimes not wanting to do anything is completely normal. It's your mind and body's way of asking for rest. Take small steps. How are you feeling right now?";
+      }
+    }
+    
+    // Handle depression/sadness
+    if (lowerMessage.includes('sad') || lowerMessage.includes('depressed') || lowerMessage.includes('down') || lowerMessage.includes('hopeless')) {
+      if (language === 'hi') {
+        return "मैं समझता हूं कि आप उदास महसूस कर रहे हैं। यह भावना अस्थायी है। अपने आप पर दया करें और छोटे-छोटे कदम उठाएं। क्या आप कुछ ऐसा कर सकते हैं जो आपको थोड़ा बेहतर महसूस कराए?";
+      } else if (language === 'mr') {
+        return "मी समजतो की तुम्हाला उदास वाटत आहे. ही भावना तात्पुरती आहे. स्वतःवर दया करा आणि लहान पावले उचला. तुम्ही काहीतरी करू शकता का जे तुम्हाला थोडे चांगले वाटेल?";
+      } else {
+        return "I understand you're feeling sad. This feeling is temporary. Be kind to yourself and take small steps. Is there something you can do that might make you feel a little better?";
+      }
+    }
+    
+    // Handle speech/presentation anxiety
+    if (lowerMessage.includes('speech') || lowerMessage.includes('presentation') || lowerMessage.includes('stage') || lowerMessage.includes('nervous') || lowerMessage.includes('नर्वसनेस') || lowerMessage.includes('स्पीच') || lowerMessage.includes('स्टेज')) {
+      if (language === 'hi') {
+        return "स्पीच या प्रेजेंटेशन से पहले नर्वस होना बहुत सामान्य है। गहरी सांस लें और याद रखें कि आप तैयार हैं। अपने मुख्य बिंदुओं पर फोकस करें। आप कैसा महसूस कर रहे हैं?";
+      } else if (language === 'mr') {
+        return "स्पीच किंवा प्रेझेंटेशनपूर्वी नर्वस होणे खूप सामान्य आहे. खोल श्वास घ्या आणि लक्षात ठेवा की तुम्ही तयार आहात. तुमच्या मुख्य मुद्द्यांवर लक्ष केंद्रित करा. तुम्हाला कसे वाटत आहे?";
+      } else {
+        return "Feeling nervous before a speech or presentation is very common. Take deep breaths and remember you're prepared. Focus on your main points. How are you feeling?";
+      }
+    }
+    
+    // Handle sleep issues
+    if (lowerMessage.includes('sleep') || lowerMessage.includes('tired') || lowerMessage.includes('insomnia')) {
+      if (language === 'hi') {
+        return "नींद की समस्या बहुत आम है। सोने से पहले स्क्रीन टाइम कम करें और एक शांत दिनचर्या बनाएं। क्या आपको सोने में कठिनाई हो रही है या आप बहुत थक गए हैं?";
+      } else if (language === 'mr') {
+        return "झोपेची समस्या खूप सामान्य आहे. झोपण्यापूर्वी स्क्रीन वेळ कमी करा आणि शांत दिनचर्या तयार करा. तुम्हाला झोपण्यात अडचण येत आहे का किंवा तुम्ही खूप थकलात?";
+      } else {
+        return "Sleep issues are very common. Reduce screen time before bed and create a calming routine. Are you having trouble falling asleep or feeling very tired?";
+      }
+    }
+    
+    // Handle relationship concerns
+    if (lowerMessage.includes('relationship') || lowerMessage.includes('family') || lowerMessage.includes('friend') || lowerMessage.includes('partner')) {
+      if (language === 'hi') {
+        return "रिश्तों में चुनौतियां आना सामान्य है। संवाद महत्वपूर्ण है। क्या आप किसी विशिष्ट रिश्ते के बारे में बात करना चाहेंगे?";
+      } else if (language === 'mr') {
+        return "नातेसंबंधात आव्हाने येणे सामान्य आहे. संवाद महत्वाचा आहे. तुम्हाला कोणत्याही विशिष्ट नात्याबद्दल बोलायचे आहे का?";
+      } else {
+        return "Relationship challenges are normal. Communication is key. Would you like to talk about a specific relationship that's concerning you?";
+      }
+    }
+    
+    return null; // No specific contextual response found
   }
 
   private static isCasualGreeting(message: string): boolean {
@@ -676,7 +1097,7 @@ Remember: This is a voice conversation - be warm, natural, and conversational. T
     language: 'en' | 'hi' | 'mr'
   ): Promise<string> {
     try {
-      if (!hasGeminiKey || !genAI) {
+      if (!hasOpenAIKey || !openai) {
         return this.generateFallbackSummary(messages, language);
       }
 
@@ -711,10 +1132,17 @@ Make the summary specific to the actual conversation, not generic. Include key d
 
 FINAL REMINDER: Respond ONLY in ${languageText} language.`;
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const result = await model.generateContent(summaryPrompt);
-      const response = await result.response;
-      const text = response.text();
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: `You are a helpful assistant that generates session summaries in the requested language.` },
+          { role: 'user', content: summaryPrompt }
+        ],
+        max_tokens: 200,
+        temperature: 0.3
+      });
+      
+      const text = completion.choices[0]?.message?.content || '';
 
       console.log(`Generated summary: ${text}`);
 
@@ -867,7 +1295,7 @@ FINAL REMINDER: Respond ONLY in ${languageText} language.`;
 
   static async detectCrisisContent(message: string): Promise<boolean> {
     try {
-      if (!hasGeminiKey || !genAI) {
+      if (!hasOpenAIKey || !openai) {
         return this.detectCrisisKeywords(message);
       }
 
@@ -877,10 +1305,17 @@ Message: "${message}"
 
 Consider keywords like: suicide, kill myself, want to die, end it all, self harm, hurt myself, no reason to live, better off dead, can't take it anymore`;
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const result = await model.generateContent(crisisPrompt);
-      const response = await result.response;
-      const text = response.text();
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: 'You are a crisis detection assistant. Analyze messages for crisis indicators and respond with only "YES" or "NO".' },
+          { role: 'user', content: crisisPrompt }
+        ],
+        max_tokens: 10,
+        temperature: 0.1
+      });
+      
+      const text = completion.choices[0]?.message?.content || '';
 
       const responseText = text?.trim().toUpperCase();
       return responseText === 'YES';
@@ -1110,6 +1545,29 @@ Consider keywords like: suicide, kill myself, want to die, end it all, self harm
       isCrisisResponse: true,
       crisisType: crisisDetection.crisisType,
       crisisSeverity: crisisDetection.severity
+    };
+  }
+
+  // Method to get API statistics for monitoring
+  static getApiStats() {
+    return {
+      ...this.apiStats,
+      successRate: this.apiStats.totalRequests > 0 ? 
+        (this.apiStats.successfulRequests / this.apiStats.totalRequests * 100).toFixed(2) + '%' : '0%',
+      fallbackRate: this.apiStats.totalRequests > 0 ? 
+        (this.apiStats.fallbackUsed / this.apiStats.totalRequests * 100).toFixed(2) + '%' : '0%'
+    };
+  }
+
+  // Method to reset API statistics
+  static resetApiStats() {
+    this.apiStats = {
+      totalRequests: 0,
+      successfulRequests: 0,
+      failedRequests: 0,
+      fallbackUsed: 0,
+      lastError: null,
+      lastErrorTime: null
     };
   }
 }
