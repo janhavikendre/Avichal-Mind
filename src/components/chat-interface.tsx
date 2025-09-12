@@ -129,6 +129,99 @@ export default function ChatInterface({
     }
   }, [language, mode, isRecording]);
 
+  // Enhanced Text-to-speech function for AI responses
+  const speakTextImproved = (text: string) => {
+    if (typeof window === 'undefined' || !text || !text.trim()) {
+      console.log('❌ TTS: Invalid text or window unavailable');
+      return;
+    }
+    
+    console.log('🔊 TTS: Starting speech for:', text.substring(0, 50) + '...');
+    
+    try {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      // Wait for speech synthesis to be ready
+      const speakWhenReady = () => {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('🎤 Available voices:', voices.length);
+        
+        if (voices.length === 0) {
+          // Voices not loaded yet, try again
+          setTimeout(speakWhenReady, 100);
+          return;
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Find appropriate voice based on language
+        let selectedVoice = null;
+        if (language === 'hi') {
+          selectedVoice = voices.find(voice => 
+            voice.lang.includes('hi') || voice.name.toLowerCase().includes('hindi')
+          ) || voices.find(voice => voice.lang.includes('en-IN'));
+          utterance.lang = 'hi-IN';
+          utterance.rate = 0.85;
+        } else if (language === 'mr') {
+          // Use Hindi voice for Marathi (better compatibility)
+          selectedVoice = voices.find(voice => 
+            voice.lang.includes('hi') || voice.name.toLowerCase().includes('hindi')
+          ) || voices.find(voice => voice.lang.includes('en-IN'));
+          utterance.lang = 'hi-IN';
+          utterance.rate = 0.85;
+        } else {
+          selectedVoice = voices.find(voice => 
+            voice.lang.includes('en') && (voice.name.includes('Google') || voice.name.includes('Microsoft'))
+          ) || voices.find(voice => voice.lang.includes('en'));
+          utterance.lang = 'en-US';
+          utterance.rate = 1.0;
+        }
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+          console.log('🎯 Selected voice:', selectedVoice.name, selectedVoice.lang);
+        } else {
+          console.log('⚠️ No specific voice found, using default');
+        }
+        
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Add event listeners for debugging and status tracking
+        utterance.onstart = () => {
+          console.log('✅ TTS: Speech started');
+        };
+        
+        utterance.onend = () => {
+          console.log('✅ TTS: Speech ended');
+        };
+        
+        utterance.onerror = (event) => {
+          console.error('❌ TTS Error:', event.error);
+        };
+        
+        utterance.onpause = () => {
+          console.log('⏸️ TTS: Speech paused');
+        };
+        
+        utterance.onresume = () => {
+          console.log('▶️ TTS: Speech resumed');
+        };
+        
+        // Speak the text
+        console.log('🗣️ Starting speech synthesis...');
+        window.speechSynthesis.speak(utterance);
+      };
+      
+      // Start the speech process
+      speakWhenReady();
+      
+    } catch (error) {
+      console.error('❌ TTS Fatal Error:', error);
+    }
+  };
+
   const loadMessages = async () => {
     try {
       let apiUrl = `/api/session/${sessionId}`;
@@ -139,6 +232,13 @@ export default function ChatInterface({
       const response = await fetch(apiUrl);
       if (response.ok) {
         const data = await response.json();
+        console.log('📥 Loaded messages from API:', data.messages);
+        console.log('📥 Message details:', data.messages?.map((m: any) => ({ 
+          id: m._id, 
+          role: m.role, 
+          text: m.contentText?.slice(0, 30),
+          videos: m.videoSuggestions?.length || 0
+        })));
         setMessages(data.messages || []);
         setSession(data.session);
       }
@@ -161,6 +261,12 @@ export default function ChatInterface({
     }, 50);
   };
 
+  // Debug effect to track message changes
+  useEffect(() => {
+    console.log('🎯 Messages changed! Count:', messages.length);
+    console.log('📝 Current messages:', messages.map(m => `${m.role}:${m._id.slice(-8)} - "${m.contentText.slice(0, 30)}"`));
+  }, [messages]);
+
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
 
@@ -176,6 +282,7 @@ export default function ChatInterface({
       createdAt: new Date().toISOString(),
     };
     setMessages(prev => [...prev, tempUserMessage]);
+    console.log('📤 Temp message added:', tempUserMessage._id);
 
     try {
       const requestBody = {
@@ -194,15 +301,75 @@ export default function ChatInterface({
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(prev => prev.filter(msg => msg._id !== tempUserMessage._id).concat([data.userMessage, data.assistantMessage]));
-        onMessageSent?.(data.assistantMessage);
+        console.log('✅ API Response:', data);
+        
+        // The API returns { message: { assistantMessage } } format
+        if (data.message) {
+          const assistantMessage = {
+            _id: data.message._id,
+            role: 'assistant' as const,
+            contentText: data.message.contentText,
+            createdAt: data.message.createdAt,
+            videoSuggestions: data.message.videoSuggestions || [],
+            isCrisisResponse: data.message.isCrisisResponse,
+            crisisType: data.message.crisisType,
+            crisisSeverity: data.message.crisisSeverity,
+          };
+          
+          console.log('🎥 Video suggestions received:', data.message.videoSuggestions?.length || 0);
+          if (data.message.videoSuggestions?.length > 0) {
+            console.log('📹 Video details:', data.message.videoSuggestions.map((v: any) => ({
+              title: v.title?.slice(0, 30),
+              url: v.url,
+              thumbnail: v.thumbnail
+            })));
+          }
+          
+          // Update temp user message to be permanent and add assistant response
+          setMessages(prev => {
+            console.log('🔄 Before update - Message count:', prev.length);
+            console.log('🔄 Temp message ID to remove:', tempUserMessage._id);
+            const withoutTemp = prev.filter(msg => msg._id !== tempUserMessage._id);
+            console.log('➖ After removing temp - Message count:', withoutTemp.length);
+            const permanentUserMessage = { 
+              ...tempUserMessage, 
+              _id: `user-${Date.now()}-${Math.random()}` 
+            };
+            console.log('➕ Creating permanent user message:', permanentUserMessage._id);
+            const newMessages = [...withoutTemp, permanentUserMessage, assistantMessage];
+            console.log('💬 Final message count:', newMessages.length);
+            console.log('📋 All message IDs:', newMessages.map(m => `${m.role}:${m._id}`));
+            return newMessages;
+          });
+          
+          // Auto-speak AI response (always enabled since we removed mode selector)
+          if (assistantMessage.contentText) {
+            setTimeout(() => {
+              console.log('🔊 Attempting to speak AI response:', assistantMessage.contentText.slice(0, 50));
+              speakTextImproved(assistantMessage.contentText);
+            }, 800);
+          }
+          
+          onMessageSent?.(assistantMessage);
+        } else {
+          console.error('❌ Unexpected API response format:', data);
+          // Remove temp message if API response is invalid
+          setMessages(prev => prev.filter(msg => msg._id !== tempUserMessage._id));
+          throw new Error('Invalid response format');
+        }
       } else {
         throw new Error('Failed to send message');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-      setMessages(prev => prev.filter(msg => msg._id !== tempUserMessage._id));
+      console.error('❌ Error sending message:', error);
+      toast.error('Failed to send message. Please try again.');
+      
+      // Keep temp message visible but mark it as failed
+      setMessages(prev => prev.map(msg => 
+        msg._id === tempUserMessage._id 
+          ? { ...msg, contentText: `❌ ${msg.contentText} (Failed - Click to retry)`, failed: true } 
+          : msg
+      ));
     } finally {
       setIsSending(false);
       setIsTyping(false);
@@ -217,7 +384,6 @@ export default function ChatInterface({
   };
 
   const toggleRecording = () => {
-    if (mode !== 'voice') return;
     if (!supportsSpeech || !recognitionRef.current) {
       toast.error('Speech recognition not supported in this browser.');
       return;
@@ -240,7 +406,6 @@ export default function ChatInterface({
   };
 
   const cutRecording = () => {
-    if (mode !== 'voice') return;
     try {
       recognitionRef.current?.stop();
     } catch (e) {
@@ -253,7 +418,6 @@ export default function ChatInterface({
   };
 
   const stopAndSendRecording = async () => {
-    if (mode !== 'voice') return;
     try {
       recognitionRef.current?.stop();
     } catch (e) {
@@ -296,53 +460,8 @@ export default function ChatInterface({
 
   return (
     <div className="flex flex-col h-full min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-medium text-gray-900 dark:text-white">
-                  {session?.title || 'Chat Session'}
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {language === 'hi' 
-                    ? 'आपकी सहायता के लिए यहाँ हैं' 
-                    : language === 'mr'
-                    ? 'तुमच्या मदतीसाठी येथे आहोत'
-                    : 'We are here to help you'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <select
-                value={language}
-                onChange={(e) => onLanguageChange?.(e.target.value as 'en' | 'hi' | 'mr')}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                <option value="en">English</option>
-                <option value="hi">हिंदी</option>
-                <option value="mr">मराठी</option>
-              </select>
-              <select
-                value={mode}
-                onChange={(e) => onModeChange?.(e.target.value as 'text' | 'voice')}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                <option value="text">
-                  {language === 'hi' ? 'टेक्स्ट' : language === 'mr' ? 'मजकूर' : 'Text'}
-                </option>
-                <option value="voice">
-                  {language === 'hi' ? 'आवाज़' : language === 'mr' ? 'आवाज' : 'Voice'}
-                </option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Top Spacer to ensure messages are visible after header removal */}
+      <div className="h-4 bg-gray-50 dark:bg-gray-900"></div>
       
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
@@ -355,8 +474,10 @@ export default function ChatInterface({
             <p className="text-sm mt-3">Loading conversation...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-center">
+          /* Centered input layout for empty chat */
+          <div className="flex flex-col items-center justify-center h-full pt-16">
+            {/* Greeting Message */}
+            <div className="text-center mb-12">
               <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -383,12 +504,103 @@ export default function ChatInterface({
                  'Start your mental wellness conversation below'}
               </p>
             </div>
+            
+            <div className="w-full max-w-2xl mx-auto">
+              {/* Centered Input Area */}
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                <div className="flex items-end space-x-3">
+                  <div className="flex-1 relative">
+                    <div className="relative bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                      <textarea
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={
+                          language === 'hi' 
+                            ? 'अपना संदेश यहाँ लिखें...' 
+                            : language === 'mr'
+                            ? 'तुमचा संदेश येथे लिहा...'
+                            : 'Type your message here...'
+                        }
+                        className="w-full p-3 bg-transparent resize-none focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-lg"
+                        rows={1}
+                        disabled={isSending}
+                        style={{ minHeight: '44px', maxHeight: '120px' }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    {/* Show controls based on mode */}
+                    {mode === 'voice' ? (
+                      // Voice mode - show recording controls
+                      isRecording ? (
+                        <>
+                          <button
+                            onClick={cutRecording}
+                            className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                            title="Cancel recording"
+                          >
+                            <Scissors className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={stopAndSendRecording}
+                            className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                            title="Send recording"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={toggleRecording}
+                          disabled={!supportsSpeech}
+                          className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                          title="Start voice recording"
+                        >
+                          <Mic className="w-4 h-4" />
+                        </button>
+                      )
+                    ) : (
+                      // Text mode - show only send button
+                      <button
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || isSending}
+                        className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                        title="Send message"
+                      >
+                        {isSending ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Mode and Language indicators */}
+                <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex space-x-2">
+                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                      {mode === 'voice' ? 'Voice Mode' : 'Text Mode'}
+                    </span>
+                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                      {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {messages.map((message) => (
+          <div className="space-y-3 pt-14">
+            {(() => {
+              console.log('🎨 Rendering messages. Total:', messages.length, 'Filtered:', messages.filter(message => message && message.role).length);
+              return null;
+            })()}
+            {messages.filter(message => message && message.role).map((message) => (
               <div
-                key={message._id}
+                key={message._id || `msg-${Date.now()}-${Math.random()}`}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
@@ -409,8 +621,62 @@ export default function ChatInterface({
                     </div>
                   )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {message.contentText}
+                    {message.contentText || ''}
                   </p>
+                  
+                  {/* YouTube Video Suggestions */}
+                  {message.videoSuggestions && message.videoSuggestions.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        {language === 'hi' ? 'सुझाए गए वीडियो:' : 
+                         language === 'mr' ? 'सुचविलेले व्हिडिओ:' : 
+                         'Suggested Videos:'}
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {message.videoSuggestions.map((video, index) => (
+                          <div 
+                            key={video.id || index}
+                            className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-200 dark:border-gray-600"
+                            onClick={() => window.open(video.url, '_blank')}
+                          >
+                            {video.thumbnail && (
+                              <img 
+                                src={video.thumbnail} 
+                                alt={video.title}
+                                className="w-20 h-15 object-cover rounded flex-shrink-0"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-gray-900 dark:text-white overflow-hidden mb-1" 
+                                  style={{ 
+                                    display: '-webkit-box', 
+                                    WebkitLineClamp: 2, 
+                                    WebkitBoxOrient: 'vertical' 
+                                  }}>
+                                {video.title}
+                              </h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {video.channelTitle}
+                              </p>
+                              {video.duration && (
+                                <span className="inline-block mt-1 px-2 py-1 text-xs bg-black text-white rounded">
+                                  {video.duration}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-shrink-0">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -420,105 +686,117 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-end space-x-3">
-            <div className="flex-1 relative">
-              <div className="relative bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
-                <textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={
-                    language === 'hi' 
-                      ? 'अपना संदेश यहाँ लिखें...' 
-                      : language === 'mr'
-                      ? 'तुमचा संदेश येथे लिहा...'
-                      : 'Type your message here...'
-                  }
-                  className="w-full p-3 bg-transparent resize-none focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-lg"
-                  rows={1}
-                  disabled={isSending}
-                  style={{ minHeight: '44px', maxHeight: '120px' }}
-                />
+      {/* Input Area - Only show when messages exist */}
+      {messages.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-end space-x-3">
+              <div className="flex-1 relative">
+                <div className="relative bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={
+                      language === 'hi' 
+                        ? 'अपना संदेश यहाँ लिखें...' 
+                        : language === 'mr'
+                        ? 'तुमचा संदेश येथे लिहा...'
+                        : 'Type your message here...'
+                    }
+                    className="w-full p-3 bg-transparent resize-none focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-lg"
+                    rows={1}
+                    disabled={isSending}
+                    style={{ minHeight: '44px', maxHeight: '120px' }}
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                {/* Show controls based on mode */}
+                {mode === 'voice' ? (
+                  // Voice mode - show recording controls
+                  isRecording ? (
+                    <>
+                      <button
+                        onClick={cutRecording}
+                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                        title="Cancel recording"
+                      >
+                        <Scissors className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={stopAndSendRecording}
+                        className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                        title="Send recording"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={toggleRecording}
+                      disabled={!supportsSpeech}
+                      className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      title="Start voice recording"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+                  )
+                ) : (
+                  // Text mode - show only send button
+                  <button
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim() || isSending}
+                    className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                    title="Send message"
+                  >
+                    {isSending ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
-            <div className="flex space-x-2">
-              {mode === 'voice' ? (
-                isRecording ? (
-                  <>
-                    <button
-                      onClick={cutRecording}
-                      className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
-                      title="Cancel recording"
-                    >
-                      <Scissors className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={stopAndSendRecording}
-                      className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-                      title="Send recording"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={toggleRecording}
-                    disabled={!supportsSpeech}
-                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                    title="Start voice recording"
-                  >
-                    <Mic className="w-4 h-4" />
-                  </button>
-                )
-              ) : (
+            
+            {/* Status and Actions */}
+            <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex space-x-2">
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                  {mode === 'voice' ? 'Voice Mode' : 'Text Mode'}
+                </span>
+                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                  {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
+                </span>
+                {/* Debug TTS Button - Always available now */}
                 <button
-                  onClick={sendMessage}
-                  disabled={!newMessage.trim() || isSending}
-                  className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
-                  title="Send message"
+                  onClick={() => speakTextImproved('Testing voice output. Can you hear this?')}
+                  className="px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 text-blue-700 dark:text-blue-300 rounded text-xs"
                 >
-                  {isSending ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
+                  Test Voice
                 </button>
-              )}
+              </div>
+              <button
+                className="text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                onClick={() => {
+                  const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `session-${sessionId}-transcript.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Download Transcript
+              </button>
             </div>
-          </div>
-          
-          {/* Language and Mode Info */}
-          <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex space-x-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                {mode === 'voice' ? 'Voice Mode' : 'Text Mode'}
-              </span>
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
-              </span>
-            </div>
-            <button
-              className="text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-              onClick={() => {
-                const blob = new Blob([getTranscriptText()], { type: 'text/plain;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `session-${sessionId}-transcript.txt`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Download Transcript
-            </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

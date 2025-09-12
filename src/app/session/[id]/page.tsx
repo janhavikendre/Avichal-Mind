@@ -69,14 +69,28 @@ export default function SessionPage() {
       if (response.ok) {
         const data = await response.json();
         setSession(data.session);
-        setMessages(data.messages || []);
+        
+        // Validate and filter messages to ensure they have required properties
+        const validMessages = (data.messages || []).filter((message: any) => {
+          return message && 
+                 typeof message === 'object' && 
+                 message.role && 
+                 (message.role === 'user' || message.role === 'assistant') &&
+                 message.contentText &&
+                 typeof message.contentText === 'string';
+        });
+        
+        setMessages(validMessages);
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Session fetch failed:', response.status, errorData);
         toast.error('Failed to load session');
         router.push('/dashboard');
       }
     } catch (error) {
       console.error('Error fetching session:', error);
       toast.error('Failed to load session');
+      setError('Failed to load session');
     } finally {
       setIsLoading(false);
     }
@@ -338,6 +352,12 @@ export default function SessionPage() {
   };
 
   const playMessage = (message: Message) => {
+    // Safety check to ensure message is valid
+    if (!message || !message._id || !message.contentText || typeof message.contentText !== 'string') {
+      console.warn('Invalid message object for playback:', message);
+      return;
+    }
+
     if (playingMessageId === message._id) {
       window.speechSynthesis.cancel();
       setPlayingMessageId(null);
@@ -642,9 +662,9 @@ export default function SessionPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {messages.map((message) => (
+              {messages.filter(message => message && message.role && message.contentText).map((message) => (
                 <div
-                  key={message._id}
+                  key={message._id || `msg-${Date.now()}-${Math.random()}`}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[80%] ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
@@ -664,13 +684,15 @@ export default function SessionPage() {
                         </div>
                       )}
                       <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {message.contentText}
+                        {message.contentText || ''}
                       </div>
                     </div>
                     <div className={`flex items-center justify-between mt-2 text-xs ${
                       message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
                     }`}>
-                      <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                      <span className="text-xs">
+                        {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : 'Just now'}
+                      </span>
                       {message.role === 'assistant' && (
                         <button 
                           onClick={() => playMessage(message)}
