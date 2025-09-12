@@ -24,26 +24,53 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
 
   return (
     <motion.div
-      initial={{ y: -100, opacity: 0 }}
+      initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       className={cn(
-        "fixed top-6 right-6 z-50",
+        "fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-gray-900/90 dark:border-gray-800",
         className
       )}
     >
-      <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl px-4 sm:px-6 py-3 shadow-2xl dark:border-gray-700/50 dark:bg-gray-900/90">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="h-16 sm:h-20 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gray-900 rounded-xl flex items-center justify-center shadow-sm dark:bg-gray-800">
             <span className="text-white font-bold text-sm sm:text-base">AM</span>
           </div>
-          <span className="hidden sm:block text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Avichal Mind
-          </span>
+          <span className="hidden sm:block text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">Avichal Mind</span>
         </div>
         
         <div className="flex items-center space-x-2 sm:space-x-3 ml-3 sm:ml-6">
           <ThemeToggle />
+          
+          {/* Navigation Links for authenticated users */}
+          <SignedIn>
+            <Button
+              onClick={() => router.push('/dashboard')}
+              variant="ghost"
+              size="sm"
+              className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+            >
+              Dashboard
+            </Button>
+            <Button
+              onClick={() => router.push('/sessions')}
+              variant="ghost"
+              size="sm"
+              className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+            >
+              Sessions
+            </Button>
+            <Button
+              onClick={() => router.push('/summaries')}
+              variant="ghost"
+              size="sm"
+              className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+            >
+              Summaries
+            </Button>
+          </SignedIn>
           
           {/* Show sign in/up buttons only if neither Clerk user nor phone user is logged in */}
           <SignedOut>
@@ -55,7 +82,7 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Button size="sm" className="bg-gray-900 hover:bg-black text-white rounded-xl text-sm font-medium px-4 py-2 shadow-sm">
                     <span className="hidden sm:inline">Get Started</span>
                     <span className="sm:hidden">Start</span>
                   </Button>
@@ -69,7 +96,7 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
             <UserButton 
               appearance={{
                 elements: {
-                  userButtonAvatarBox: "w-6 h-6 sm:w-8 sm:h-8",
+                  userButtonAvatarBox: "w-7 h-7 sm:w-9 sm:h-9",
                   userButtonTrigger: "focus:shadow-none"
                 }
               }}
@@ -79,7 +106,31 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
           {/* Show phone user info if phone user is logged in */}
           {isPhoneUser && phoneUser && (
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+              <Button
+                onClick={() => router.push('/dashboard')}
+                variant="ghost"
+                size="sm"
+                className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+              >
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push('/sessions')}
+                variant="ghost"
+                size="sm"
+                className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+              >
+                Sessions
+              </Button>
+              <Button
+                onClick={() => router.push('/summaries')}
+                variant="ghost"
+                size="sm"
+                className="hidden sm:block text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+              >
+                Summaries
+              </Button>
+              <div className="w-7 h-7 sm:w-9 sm:h-9 bg-gray-900 rounded-full flex items-center justify-center dark:bg-gray-800">
                 <span className="text-white font-bold text-xs sm:text-sm">
                   {phoneUser.firstName?.charAt(0) || 'P'}
                 </span>
@@ -98,6 +149,7 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               </Button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </motion.div>

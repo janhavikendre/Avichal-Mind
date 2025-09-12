@@ -7,7 +7,7 @@ import { Message } from '@/models/message';
 import { User } from '@/models/user';
 import { maskPII } from '@/lib/utils';
 import { gamificationService } from '@/lib/gamification';
-import { AIService } from '@/services/ai';
+import { SummaryService } from '@/services/summary';
 
 export async function GET(
   request: NextRequest,
@@ -121,26 +121,36 @@ export async function POST(
     const { action } = body;
 
     if (action === 'finalize') {
-      // Get all messages to generate summary
-      const messages = await Message.find({ sessionId: session._id })
-        .sort({ createdAt: 1 });
-
-      // Convert messages to the format expected by AIService
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.contentText
-      }));
-
-      // Generate summary using AI service with proper language detection
-      const summary = await AIService.generateSessionSummary(conversationHistory, session.language);
-
+      // Finalize the session
       session.completedAt = new Date();
-      session.summary = summary;
       session.totalDuration = Math.floor(
         (session.completedAt.getTime() - session.startedAt.getTime()) / 1000
       );
 
-      await session.save();
+      // Generate comprehensive summary using new summary service
+      console.log(`Generating summary for session ${params.id} during completion`);
+      const summaryResult = await SummaryService.generateSessionSummary(params.id);
+      
+      if (summaryResult.success && !summaryResult.skipped) {
+        console.log(`Summary generated successfully for session ${params.id}:`, {
+          summaryLength: summaryResult.summary?.content.length,
+          language: summaryResult.summary?.language,
+          qualityScore: summaryResult.summary?.quality.score
+        });
+      } else if (summaryResult.skipped) {
+        console.log(`Summary skipped for session ${params.id}: ${summaryResult.message}`);
+      } else {
+        console.error(`Summary generation failed for session ${params.id}: ${summaryResult.message}`);
+      }
+
+      // Save the session to database
+      const savedSession = await session.save();
+      
+      console.log(`Session ${params.id} completed and saved to database:`, {
+        summaryGenerated: summaryResult.success && !summaryResult.skipped,
+        completedAt: savedSession.completedAt,
+        totalDuration: savedSession.totalDuration
+      });
 
       // Update user gamification stats for completed session
       user.stats.totalSessions = (user.stats.totalSessions || 0) + 1;

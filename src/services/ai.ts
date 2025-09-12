@@ -263,10 +263,10 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
       const fullPrompt = `${this.systemPrompt}${knowledgeContext}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nCRITICAL: Respond specifically to what ${userName} just said. Do NOT give generic responses like "What's on your mind?" or "How can I help?" when they've shared something specific. Address their exact concern or question. Respond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend). IMPORTANT: Only add the medical disclaimer when giving specific mental health advice or coping strategies, NOT for casual conversations or simple acknowledgments.`;
 
-      // Retry mechanism for transient failures
+      // Optimized for voice calls - reduced retries and faster processing
       let text = '';
       let retryCount = 0;
-      const maxRetries = 2;
+      const maxRetries = 1; // Reduced from 2 to 1 for faster response
       
       while (retryCount <= maxRetries) {
         try {
@@ -276,8 +276,9 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
               { role: 'system', content: this.systemPrompt },
               { role: 'user', content: fullPrompt }
             ],
-            max_tokens: 500,
-            temperature: 0.7
+            max_tokens: 300, // Reduced from 500 for faster response
+            temperature: 0.7,
+            stream: false // Ensure no streaming for faster completion
           });
           
           text = completion.choices[0]?.message?.content || '';
@@ -288,14 +289,14 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
             console.log(`OpenAI returned empty response, retry ${retryCount + 1}/${maxRetries + 1}`);
             retryCount++;
             if (retryCount <= maxRetries) {
-              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Wait before retry
+              await new Promise(resolve => setTimeout(resolve, 500 * retryCount)); // Reduced wait time for faster response
             }
           }
         } catch (retryError) {
           console.log(`OpenAI API call failed, retry ${retryCount + 1}/${maxRetries + 1}:`, retryError);
           retryCount++;
           if (retryCount <= maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 500 * retryCount)); // Reduced wait time for faster response
           } else {
             throw retryError; // Re-throw if all retries failed
           }
@@ -1110,41 +1111,70 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
 
       console.log(`Session language detected: ${actualLanguage}, generating summary in ${languageText}`);
 
-      // Force the summary to be in the detected language, not the parameter
-      const summaryPrompt = `Generate a specific, actionable summary of this wellness session in ${languageText} ONLY (max 200 characters). 
+      // Check if session has sufficient interaction for a meaningful summary
+      // Require at least 2 meaningful user messages and at least 1 assistant response
+      const meaningfulUserMessages = userMessages.filter(msg => 
+        msg.content.trim().length > 10 && 
+        !this.isJustGreeting(msg.content) &&
+        !this.isCasualGreeting(msg.content)
+      );
 
-IMPORTANT INSTRUCTIONS:
-- You MUST respond in ${languageText} language only
-- Do not mix languages
-- Do not use any other language
-- The entire summary must be in ${languageText}
+      if (meaningfulUserMessages.length < 2 || assistantMessages.length < 1) {
+        console.log(`Session has insufficient meaningful interaction (${meaningfulUserMessages.length} meaningful user messages, ${assistantMessages.length} assistant responses), skipping summary generation`);
+        return ''; // Return empty string to indicate no summary should be generated
+      }
 
+      // Check if user shared any actual problems/concerns
+      const hasRealProblems = meaningfulUserMessages.some(msg => 
+        this.indicatesProblemDiscussion(msg.content)
+      );
+
+      if (!hasRealProblems) {
+        console.log(`Session contains only greetings/casual conversation, no real problems discussed, skipping summary generation`);
+        return '';
+      }
+
+      // Create a comprehensive summary that focuses on user's situation and outcomes
+      const summaryPrompt = `You are a mental wellness assistant. Generate a comprehensive, user-focused summary of this mental wellness session.
+
+CRITICAL LANGUAGE REQUIREMENT: You MUST write the ENTIRE summary in ${languageText} language ONLY. Do not use any other language. Every single word must be in ${languageText}.
+
+CONVERSATION CONTEXT:
 User messages: ${userMessages.map(m => m.content).join(' | ')}
 Assistant responses: ${assistantMessages.length} supportive responses provided
 
-Focus on:
-- What specific issue/topic did the user discuss?
-- What concrete advice or techniques were provided?
-- What was the user's main concern or question?
-- What actionable steps were suggested?
+SUMMARY REQUIREMENTS (Write in ${languageText} ONLY):
+Create a summary that answers these key questions:
+1. What is the user currently facing or struggling with?
+2. What is the overall conclusion or main takeaway from the session?
+3. What specific challenges or issues were identified?
+4. What support or guidance was provided?
+5. What is the user's current emotional/mental state based on the conversation?
 
-Make the summary specific to the actual conversation, not generic. Include key details about what was discussed and what help was offered.
+FORMAT: Write as a clear, concise paragraph in ${languageText} that gives the user a complete picture of:
+- Their current situation/challenges
+- What was discussed and resolved
+- Key insights or realizations
+- Next steps or recommendations
+- Overall emotional state and progress
 
-FINAL REMINDER: Respond ONLY in ${languageText} language.`;
+Make it personal and specific to what the user shared, not generic. Focus on the user's journey and what they're going through.
+
+ABSOLUTE REQUIREMENT: The entire response must be written in ${languageText} language. Do not use English or any other language.`;
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: `You are a helpful assistant that generates session summaries in the requested language.` },
+          { role: 'system', content: `You are a mental wellness assistant that creates comprehensive, user-focused session summaries. You MUST write summaries in the exact language specified in the user's request. If the user asks for a summary in Hindi, write ONLY in Hindi. If the user asks for a summary in Marathi, write ONLY in Marathi. If the user asks for a summary in English, write ONLY in English. Never mix languages.` },
           { role: 'user', content: summaryPrompt }
         ],
-        max_tokens: 200,
+        max_tokens: 300,
         temperature: 0.3
       });
       
       const text = completion.choices[0]?.message?.content || '';
 
-      console.log(`Generated summary: ${text}`);
+      console.log(`Generated comprehensive summary: ${text}`);
 
       // Ensure the response is in the correct language
       if (text && this.isLanguageCorrect(text, actualLanguage)) {
@@ -1160,69 +1190,174 @@ FINAL REMINDER: Respond ONLY in ${languageText} language.`;
     }
   }
 
+  // Helper method to check if message is just a greeting
+  private static isJustGreeting(message: string): boolean {
+    const greetings = [
+      'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+      'namaste', 'namaskar', 'pranam', 'adab',
+      'हाय', 'हैलो', 'नमस्ते', 'नमस्कार', 'प्रणाम',
+      'हाय', 'हॅलो', 'नमस्कार', 'नमस्ते', 'आदाब'
+    ];
+    
+    const lowerMessage = message.toLowerCase().trim();
+    return greetings.some(greeting => 
+      lowerMessage === greeting || 
+      lowerMessage.startsWith(greeting + ' ') ||
+      lowerMessage.endsWith(' ' + greeting)
+    ) && lowerMessage.length < 50;
+  }
+
+  // Helper method to check if message indicates problem discussion
+  private static indicatesProblemDiscussion(message: string): boolean {
+    const problemIndicators = [
+      // English
+      'problem', 'issue', 'stress', 'anxiety', 'worried', 'sad', 'depressed', 'help',
+      'difficult', 'struggle', 'challenge', 'pain', 'hurt', 'feel', 'feeling',
+      'trouble', 'concern', 'fear', 'upset', 'angry', 'frustrated', 'tired',
+      
+      // Hindi
+      'समस्या', 'परेशानी', 'चिंता', 'दुख', 'दर्द', 'मदद', 'परेशान', 'उदास',
+      'डर', 'भय', 'गुस्सा', 'थकान', 'मुश्किल', 'कठिनाई', 'तनाव',
+      
+      // Marathi
+      'समस्या', 'अडचण', 'चिंता', 'दुःख', 'वेदना', 'मदत', 'त्रास', 'उदास',
+      'भीती', 'राग', 'थकवा', 'कठीण', 'अवघड', 'ताणतणाव'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return problemIndicators.some(indicator => 
+      lowerMessage.includes(indicator.toLowerCase())
+    ) || message.length > 30; // Longer messages likely contain real content
+  }
+
   private static isLanguageCorrect(text: string, expectedLanguage: 'en' | 'hi' | 'mr'): boolean {
     if (expectedLanguage === 'en') {
-      // Check if text contains English characters and doesn't contain Hindi/Marathi
+      // Check if text contains English characters and doesn't contain Devanagari
       const hasEnglish = /[a-zA-Z]/.test(text);
-      const hasHindi = /[\u0900-\u097F]/.test(text);
-      const hasMarathi = /[\u0900-\u097F]/.test(text);
-      return hasEnglish && !hasHindi && !hasMarathi;
+      const hasDevanagari = /[\u0900-\u097F]/.test(text);
+      return hasEnglish && !hasDevanagari;
     } else if (expectedLanguage === 'hi') {
-      // Check if text contains Hindi characters
-      return /[\u0900-\u097F]/.test(text);
+      // Check if text contains Devanagari characters and has Hindi-specific words
+      const hasDevanagari = /[\u0900-\u097F]/.test(text);
+      const hindiWords = ['क्या', 'कैसे', 'मैं', 'है', 'हैं', 'मुझे', 'तुम्हें', 'हमारा', 'तुम्हारा'];
+      const hasHindiWords = hindiWords.some(word => text.includes(word));
+      return hasDevanagari && (hasHindiWords || text.length > 10); // Allow if has Devanagari and either Hindi words or sufficient length
     } else if (expectedLanguage === 'mr') {
-      // Check if text contains Marathi characters
-      return /[\u0900-\u097F]/.test(text);
+      // Check if text contains Devanagari characters and has Marathi-specific words
+      const hasDevanagari = /[\u0900-\u097F]/.test(text);
+      const marathiWords = ['काय', 'कसे', 'मी', 'आहे', 'आहात', 'मला', 'तुम्हाला', 'आमचा', 'तुमचा'];
+      const hasMarathiWords = marathiWords.some(word => text.includes(word));
+      return hasDevanagari && (hasMarathiWords || text.length > 10); // Allow if has Devanagari and either Marathi words or sufficient length
     }
     return true;
   }
 
-  private static detectSessionLanguage(messages: Array<{ role: 'user' | 'assistant'; content: string }>): 'en' | 'hi' | 'mr' {
+  static detectSessionLanguage(messages: Array<{ role: 'user' | 'assistant'; content: string }>): 'en' | 'hi' | 'mr' {
     // Check user messages for language indicators
     const userMessages = messages.filter(msg => msg.role === 'user');
     
-    let hindiCount = 0;
-    let marathiCount = 0;
-    let englishCount = 0;
-    
-    for (const message of userMessages) {
-      const content = message.content;
-      
-      // Count Hindi characters
-      const hindiChars = (content.match(/[\u0900-\u097F]/g) || []).length;
-      hindiCount += hindiChars;
-      
-      // Count Marathi characters (same Unicode range as Hindi)
-      marathiCount += hindiChars; // Marathi uses same Unicode range
-      
-      // Count English characters
-      const englishChars = (content.match(/[a-zA-Z]/g) || []).length;
-      englishCount += englishChars;
+    if (userMessages.length === 0) {
+      console.log('No user messages found, defaulting to English');
+      return 'en';
     }
     
-    console.log(`Language detection counts - Hindi: ${hindiCount}, English: ${englishCount}`);
+    let hindiScore = 0;
+    let marathiScore = 0;
+    let englishScore = 0;
     
-    // If significant Hindi/Marathi characters found, determine which one
-    if (hindiCount > 5) {
-      // Check for Marathi-specific words
-      const hasMarathiWords = userMessages.some(msg => 
-        msg.content.includes('काय') || msg.content.includes('कसे') || 
-        msg.content.includes('कधी') || msg.content.includes('कुठे') ||
-        msg.content.includes('कोण') || msg.content.includes('मी') ||
-        msg.content.includes('तुम्ही') || msg.content.includes('आहात')
-      );
+    // Combine all user messages for analysis
+    const allUserContent = userMessages.map(msg => msg.content).join(' ');
+    
+    // Count characters
+    const devanagariChars = (allUserContent.match(/[\u0900-\u097F]/g) || []).length;
+    const englishChars = (allUserContent.match(/[a-zA-Z]/g) || []).length;
+    
+    console.log(`Language detection - Devanagari chars: ${devanagariChars}, English chars: ${englishChars}`);
+    
+    // If significant Devanagari characters found, determine Hindi vs Marathi
+    if (devanagariChars > 3) {
+      // Marathi-specific words and patterns (expanded list)
+      const marathiWords = [
+        'काय', 'कसे', 'कधी', 'कुठे', 'कोण', 'कोणता', 'कोणती', 'कोणते',
+        'मी', 'तू', 'तो', 'ती', 'ते', 'आम्ही', 'तुम्ही', 'ते', 'त्या',
+        'आहात', 'आहे', 'आहेत', 'आहोत', 'आहेस', 'आहे', 'आहो',
+        'करतो', 'करते', 'करतात', 'करतोस', 'करतो', 'करतो',
+        'जातो', 'जाते', 'जातात', 'जातोस', 'जातो', 'जातो',
+        'येतो', 'येते', 'येतात', 'येतोस', 'येतो', 'येतो',
+        'होतो', 'होते', 'होतात', 'होतोस', 'होतो', 'होतो',
+        'असतो', 'असते', 'असतात', 'असतोस', 'असतो', 'असतो',
+        'मला', 'तुला', 'त्याला', 'तिला', 'त्यांना', 'आम्हाला', 'तुम्हाला',
+        'माझा', 'तुझा', 'त्याचा', 'तिचा', 'त्यांचा', 'आमचा', 'तुमचा',
+        'माझी', 'तुझी', 'त्याची', 'तिची', 'त्यांची', 'आमची', 'तुमची',
+        'माझे', 'तुझे', 'त्याचे', 'तिचे', 'त्यांचे', 'आमचे', 'तुमचे',
+        // Additional Marathi-specific words
+        'घे', 'दे', 'ये', 'जा', 'हो', 'अस', 'कर', 'बस', 'उठ', 'चाल',
+        'बोल', 'ऐक', 'पाह', 'दाखव', 'सांग', 'विचार', 'समज', 'शिक',
+        'आनंद', 'दु:ख', 'चिंता', 'भीती', 'प्रेम', 'क्रोध', 'शांत', 'खुश',
+        'थकले', 'आजारी', 'निरोगी', 'बरं', 'वाईट', 'चांगलं', 'सुंदर',
+        'मोठं', 'लहान', 'जुने', 'नवीन', 'सुरुवात', 'शेवट', 'मध्ये',
+        'वर', 'खाली', 'समोर', 'मागे', 'जवळ', 'दूर', 'आत', 'बाहेर'
+      ];
       
-      if (hasMarathiWords) {
+      // Hindi-specific words and patterns
+      const hindiWords = [
+        'क्या', 'कैसे', 'कब', 'कहाँ', 'कौन', 'कौन सा', 'कौन सी', 'कौन से',
+        'मैं', 'तू', 'वह', 'वो', 'हम', 'तुम', 'वे', 'वो',
+        'हैं', 'है', 'हैं', 'हूं', 'है', 'है', 'हैं',
+        'करता', 'करती', 'करते', 'करता', 'करता', 'करता',
+        'जाता', 'जाती', 'जाते', 'जाता', 'जाता', 'जाता',
+        'आता', 'आती', 'आते', 'आता', 'आता', 'आता',
+        'होता', 'होती', 'होते', 'होता', 'होता', 'होता',
+        'मुझे', 'तुझे', 'उसे', 'उसको', 'उन्हें', 'हमें', 'तुम्हें',
+        'मेरा', 'तेरा', 'उसका', 'उसकी', 'उनका', 'हमारा', 'तुम्हारा',
+        'मेरी', 'तेरी', 'उसकी', 'उसकी', 'उनकी', 'हमारी', 'तुम्हारी',
+        'मेरे', 'तेरे', 'उसके', 'उसके', 'उनके', 'हमारे', 'तुम्हारे'
+      ];
+      
+      // Count Marathi words
+      const marathiCount = marathiWords.filter(word => allUserContent.includes(word)).length;
+      const hindiCount = hindiWords.filter(word => allUserContent.includes(word)).length;
+      
+      console.log(`Language detection analysis:`, {
+        userContent: allUserContent.substring(0, 200) + '...',
+        devanagariChars,
+        englishChars,
+        marathiWordsFound: marathiCount,
+        hindiWordsFound: hindiCount,
+        marathiWords: marathiWords.filter(word => allUserContent.includes(word)),
+        hindiWords: hindiWords.filter(word => allUserContent.includes(word))
+      });
+      
+      // Score based on word matches
+      marathiScore = marathiCount * 3; // Weight Marathi words more heavily
+      hindiScore = hindiCount * 3; // Weight Hindi words more heavily
+      
+      // Additional scoring based on character patterns
+      if (marathiCount > hindiCount) {
+        marathiScore += devanagariChars;
         console.log('Language detected: Marathi (based on Marathi-specific words)');
         return 'mr';
-      } else {
-        console.log('Language detected: Hindi (based on Devanagari characters)');
+      } else if (hindiCount > marathiCount) {
+        hindiScore += devanagariChars;
+        console.log('Language detected: Hindi (based on Hindi-specific words)');
+        return 'hi';
+      } else if (marathiCount > 0 && hindiCount === 0) {
+        // If only Marathi words found, it's Marathi
+        console.log('Language detected: Marathi (only Marathi words found)');
+        return 'mr';
+      } else if (hindiCount > 0 && marathiCount === 0) {
+        // If only Hindi words found, it's Hindi
+        console.log('Language detected: Hindi (only Hindi words found)');
+        return 'hi';
+      } else if (devanagariChars > 0) {
+        // If no clear word matches but has Devanagari, default to Hindi
+        console.log('Language detected: Hindi (default for Devanagari without clear Marathi indicators)');
         return 'hi';
       }
     }
     
     // If mostly English characters, return English
-    if (englishCount > 10 && hindiCount < 3) {
+    if (englishChars > 5 && devanagariChars < 2) {
       console.log('Language detected: English (based on English characters)');
       return 'en';
     }
@@ -1239,57 +1374,97 @@ FINAL REMINDER: Respond ONLY in ${languageText} language.`;
     const userMessages = messages.filter(msg => msg.role === 'user');
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
     
-    // Get the main topic from the first user message
-    const firstUserMessage = userMessages[0]?.content || '';
-    const mainTopic = this.extractMainTopic(firstUserMessage);
+    // Check if session has sufficient interaction for a meaningful summary
+    // Require at least 3 user messages and 2 assistant responses for a meaningful conversation
+    if (userMessages.length < 3 || assistantMessages.length < 2) {
+      console.log(`Fallback: Session has insufficient interaction (${userMessages.length} user messages, ${assistantMessages.length} assistant responses), returning empty summary`);
+      return ''; // Return empty string to indicate no summary should be generated
+    }
     
+    // Analyze the conversation to create a more meaningful summary
+    const firstUserMessage = userMessages[0]?.content || '';
+    const lastUserMessage = userMessages[userMessages.length - 1]?.content || '';
+    const mainTopic = this.extractMainTopic(firstUserMessage);
+    const emotionalState = this.detectEmotionalTone(lastUserMessage);
+    const hasMultipleTopics = userMessages.length > 2;
+    
+    // Create a more comprehensive summary
     if (language === 'hi') {
       if (mainTopic) {
-        return `जान्हवी ने ${mainTopic} के बारे में चर्चा की। ${assistantMessages.length} सहायक सुझाव दिए गए।`;
+        const emotionalContext = emotionalState === 'negative' ? 'चुनौतियों का सामना कर रहे हैं' : 
+                                emotionalState === 'positive' ? 'बेहतर महसूस कर रहे हैं' : 
+                                'विभिन्न विषयों पर चर्चा की';
+        return `जान्हवी ने ${mainTopic} के बारे में चर्चा की और ${emotionalContext}। सत्र में ${assistantMessages.length} सहायक सुझाव दिए गए और उनकी भावनात्मक स्थिति पर ध्यान दिया गया।`;
       }
-      return `सत्र में ${userMessages.length} विषयों पर चर्चा हुई। ${assistantMessages.length} सहायक प्रतिक्रियाएं प्रदान की गईं।`;
+      return `सत्र में ${userMessages.length} विषयों पर चर्चा हुई। जान्हवी ने अपनी चिंताओं और भावनाओं को साझा किया। ${assistantMessages.length} सहायक प्रतिक्रियाएं और मार्गदर्शन प्रदान किया गया।`;
     } else if (language === 'mr') {
       if (mainTopic) {
-        return `जान्हवी ने ${mainTopic} बद्दल चर्चा केली. ${assistantMessages.length} सहाय्यक सूचना दिल्या.`;
+        const emotionalContext = emotionalState === 'negative' ? 'आव्हानांचा सामना करत आहेत' : 
+                                emotionalState === 'positive' ? 'चांगले वाटत आहे' : 
+                                'विविध विषयांवर चर्चा केली';
+        return `जान्हवी ने ${mainTopic} बद्दल चर्चा केली आणि ${emotionalContext}. सत्रात ${assistantMessages.length} सहाय्यक सूचना दिल्या आणि त्यांच्या भावनिक स्थितीवर लक्ष केंद्रित केले.`;
       }
-      return `सत्रात ${userMessages.length} विषयांवर चर्चा झाली. ${assistantMessages.length} सहाय्यक प्रतिसाद दिले गेले.`;
+      return `सत्रात ${userMessages.length} विषयांवर चर्चा झाली. जान्हवी ने त्यांच्या चिंता आणि भावना सामायिक केल्या. ${assistantMessages.length} सहाय्यक प्रतिसाद आणि मार्गदर्शन प्रदान केले गेले.`;
     }
     
     // English fallback
     if (mainTopic) {
-      return `Janhavi discussed ${mainTopic}. ${assistantMessages.length} supportive suggestions provided.`;
+      const emotionalContext = emotionalState === 'negative' ? 'facing challenges' : 
+                              emotionalState === 'positive' ? 'feeling better' : 
+                              'discussed various topics';
+      return `Janhavi discussed ${mainTopic} and is ${emotionalContext}. The session provided ${assistantMessages.length} supportive suggestions with focus on emotional well-being and practical guidance.`;
     }
-    return `Session covered ${userMessages.length} topics. ${assistantMessages.length} supportive responses provided.`;
+    return `Session covered ${userMessages.length} topics where Janhavi shared concerns and feelings. ${assistantMessages.length} supportive responses and guidance were provided to help with emotional support and practical advice.`;
   }
 
   private static extractMainTopic(message: string): string {
     const lowerMessage = message.toLowerCase();
     
-    // Define topic keywords
+    // Define comprehensive topic keywords with more specific categories
     const topics = {
-      'stress management': ['stress', 'anxiety', 'worried', 'overwhelmed', 'tension'],
-      'sleep issues': ['sleep', 'insomnia', 'tired', 'exhausted', 'rest'],
-      'work pressure': ['work', 'job', 'career', 'boss', 'colleague', 'deadline'],
-      'relationship problems': ['relationship', 'partner', 'family', 'friend', 'marriage'],
-      'self-care': ['self care', 'wellness', 'health', 'care', 'healing'],
-      'mindfulness': ['mindfulness', 'meditation', 'breathing', 'calm', 'peace'],
-      'confidence issues': ['confidence', 'self-esteem', 'worth', 'believe', 'capable']
+      'stress and anxiety management': ['stress', 'anxiety', 'worried', 'overwhelmed', 'tension', 'nervous', 'panic', 'fear'],
+      'sleep and rest issues': ['sleep', 'insomnia', 'tired', 'exhausted', 'rest', 'bed', 'night', 'dream'],
+      'work and career challenges': ['work', 'job', 'career', 'boss', 'colleague', 'deadline', 'office', 'professional', 'decision'],
+      'relationship and family concerns': ['relationship', 'partner', 'family', 'friend', 'marriage', 'dating', 'breakup', 'social'],
+      'self-care and wellness': ['self care', 'wellness', 'health', 'care', 'healing', 'recovery', 'mental health'],
+      'mindfulness and meditation': ['mindfulness', 'meditation', 'breathing', 'calm', 'peace', 'zen', 'yoga', 'relaxation'],
+      'confidence and self-esteem': ['confidence', 'self-esteem', 'worth', 'believe', 'capable', 'strong', 'self worth'],
+      'depression and sadness': ['depression', 'sad', 'hopeless', 'empty', 'worthless', 'down', 'blue', 'miserable'],
+      'grief and loss': ['grief', 'loss', 'death', 'mourning', 'bereavement', 'missing', 'gone', 'losing'],
+      'emotional regulation': ['emotion', 'feeling', 'mood', 'angry', 'frustrated', 'upset', 'hurt', 'pain'],
+      'life transitions': ['change', 'transition', 'new', 'moving', 'starting', 'ending', 'phase', 'stage'],
+      'academic pressure': ['study', 'exam', 'school', 'college', 'university', 'academic', 'grades', 'education'],
+      'financial stress': ['money', 'financial', 'debt', 'bills', 'expenses', 'budget', 'income', 'financial stress']
     };
     
-    // Find the most relevant topic
+    // Find the most relevant topic with priority scoring
+    let bestMatch = '';
+    let maxScore = 0;
+    
     for (const [topic, keywords] of Object.entries(topics)) {
-      if (keywords.some(keyword => lowerMessage.includes(keyword))) {
-        return topic;
+      const score = keywords.filter(keyword => lowerMessage.includes(keyword)).length;
+      if (score > maxScore) {
+        maxScore = score;
+        bestMatch = topic;
       }
     }
     
-    // If no specific topic found, return a generic one based on message length
+    // Return the best match if found
+    if (bestMatch && maxScore > 0) {
+      return bestMatch;
+    }
+    
+    // Enhanced fallback based on message characteristics
     if (lowerMessage.length < 20) {
-      return 'general wellness';
-    } else if (lowerMessage.includes('?') || lowerMessage.includes('how') || lowerMessage.includes('what')) {
-      return 'wellness guidance';
+      return 'general wellness check-in';
+    } else if (lowerMessage.includes('?') || lowerMessage.includes('how') || lowerMessage.includes('what') || lowerMessage.includes('why')) {
+      return 'wellness guidance and support';
+    } else if (lowerMessage.includes('feel') || lowerMessage.includes('feeling') || lowerMessage.includes('emotion')) {
+      return 'emotional support and validation';
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('support') || lowerMessage.includes('advice')) {
+      return 'seeking guidance and assistance';
     } else {
-      return 'emotional support';
+      return 'personal sharing and emotional support';
     }
   }
 
@@ -1571,3 +1746,4 @@ Consider keywords like: suicide, kill myself, want to die, end it all, self harm
     };
   }
 }
+

@@ -47,22 +47,61 @@ export async function POST(request: NextRequest) {
       content: msg.contentText
     }));
 
+    // Store the old summary before updating
+    const oldSummary = session.summary || '';
+
     // Generate new summary with proper language detection
+    // Let the AI service detect the actual conversation language instead of using session.language
     const newSummary = await AIService.generateSessionSummary(
       formattedMessages, 
-      session.language
+      'en' // Pass 'en' as default, AI will detect actual language
     );
 
-    // Update the session with new summary
-    session.summary = newSummary;
-    await session.save();
-
-    return NextResponse.json({
-      message: 'Summary updated successfully',
-      oldSummary: session.summary,
-      newSummary: newSummary,
-      sessionId: session._id
+    console.log(`Generated summary for session ${sessionId}:`, {
+      oldSummary: oldSummary.substring(0, 100) + '...',
+      newSummary: newSummary.substring(0, 100) + '...',
+      messageCount: messages.length,
+      summaryGenerated: newSummary.length > 0
     });
+
+    // Only update the session if a meaningful summary was generated
+    if (newSummary && newSummary.trim().length > 0) {
+      // Update the session with new summary and mark as completed if not already
+      session.summary = newSummary;
+      if (!session.completedAt) {
+        session.completedAt = new Date();
+      }
+      
+      // Save the session to database
+      const savedSession = await session.save();
+      
+      console.log(`Session ${sessionId} updated successfully in database:`, {
+        summaryLength: savedSession.summary?.length || 0,
+        completedAt: savedSession.completedAt,
+        messageCount: messages.length
+      });
+
+      return NextResponse.json({
+        message: 'Summary generated and stored successfully in database',
+        oldSummary: oldSummary,
+        newSummary: newSummary,
+        sessionId: session._id,
+        completedAt: savedSession.completedAt,
+        summaryLength: newSummary.length
+      });
+    } else {
+      // No summary generated due to insufficient interaction
+      console.log(`No summary generated for session ${sessionId} due to insufficient interaction`);
+      
+      return NextResponse.json({
+        message: 'No summary generated - session has insufficient interaction for meaningful summary',
+        oldSummary: oldSummary,
+        newSummary: '',
+        sessionId: session._id,
+        reason: 'Insufficient interaction (need at least 3 user messages and 2 assistant responses)',
+        messageCount: messages.length
+      });
+    }
 
   } catch (error) {
     console.error('Error fixing summary:', error);

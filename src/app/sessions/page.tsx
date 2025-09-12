@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FloatingNavbar } from '@/components/ui/floating-navbar';
 import { useSessions } from '@/hooks/useSessions';
-import { Calendar, Clock, MessageSquare, Filter, Search, Trash2, MoreVertical, Eye, Play, Wrench } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, Filter, Search, Trash2, MoreVertical, Eye, Play, Wrench, RefreshCw, Brain } from 'lucide-react';
 
 interface Session {
   _id: string;
@@ -26,11 +26,33 @@ interface Session {
   };
 }
 
+interface Summary {
+  _id: string;
+  sessionId: string;
+  content: string;
+  language: 'en' | 'hi' | 'mr';
+  version: number;
+  generatedAt: string;
+  summaryType: 'comprehensive' | 'brief' | 'key_insights';
+  metadata: {
+    messageCount: number;
+    sessionDuration?: number;
+    mainTopics: string[];
+    emotionalState?: string;
+    actionItems?: string[];
+  };
+  quality: {
+    score: number;
+    isValid: boolean;
+    languageMatches: boolean;
+  };
+}
+
 export default function AllSessionsPage() {
   const { user, isLoaded } = useUser();
   const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
   const router = useRouter();
-  const { sessions, loading, stats, refreshSessions } = useSessions();
+  const { sessions, loading, error, stats, refreshSessions } = useSessions();
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<'all' | 'en' | 'hi' | 'mr'>('all');
   const [modeFilter, setModeFilter] = useState<'all' | 'text' | 'voice'>('all');
@@ -39,6 +61,9 @@ export default function AllSessionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [debugMode, setDebugMode] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<Record<string, Summary>>({});
+  const [loadingSummaries, setLoadingSummaries] = useState<Record<string, boolean>>({});
+  const [generatingSummary, setGeneratingSummary] = useState<Record<string, boolean>>({});
   const sessionsPerPage = 10;
 
   useEffect(() => {
@@ -49,6 +74,94 @@ export default function AllSessionsPage() {
       return;
     }
   }, [user, isLoaded, isPhoneUser, phoneUserLoading, router]);
+
+  // Fetch summaries for all sessions
+  useEffect(() => {
+    if (sessions.length > 0) {
+      fetchSummariesForSessions();
+    }
+  }, [sessions]);
+
+  const fetchSummariesForSessions = async () => {
+    try {
+      const phoneUserId = isPhoneUser ? phoneUser?._id : undefined;
+      const url = phoneUserId 
+        ? `/api/summaries?phoneUserId=${phoneUserId}`
+        : '/api/summaries';
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const fetchedSummaries: Summary[] = await response.json();
+        const summaryMap: Record<string, Summary> = {};
+        fetchedSummaries.forEach(summary => {
+          summaryMap[summary.sessionId] = summary;
+        });
+        setSummaries(summaryMap);
+      }
+    } catch (error) {
+      console.error('Error fetching summaries:', error);
+    }
+  };
+
+  const generateSummary = async (sessionId: string) => {
+    setGeneratingSummary(prev => ({ ...prev, [sessionId]: true }));
+    try {
+      const phoneUserId = isPhoneUser ? phoneUser?._id : undefined;
+      const url = `/api/summaries/${sessionId}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phoneUserId }),
+      });
+
+      if (response.ok) {
+        const newSummary: Summary = await response.json();
+        setSummaries(prev => ({ ...prev, [sessionId]: newSummary }));
+      } else {
+        console.error('Failed to generate summary');
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error);
+    } finally {
+      setGeneratingSummary(prev => ({ ...prev, [sessionId]: false }));
+    }
+  };
+
+  const regenerateSummary = async (sessionId: string) => {
+    const existingSummary = summaries[sessionId];
+    if (!existingSummary) return;
+
+    setGeneratingSummary(prev => ({ ...prev, [sessionId]: true }));
+    try {
+      const phoneUserId = isPhoneUser ? phoneUser?._id : undefined;
+      const response = await fetch(`/api/summaries/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phoneUserId }),
+      });
+
+      if (response.ok) {
+        // Remove the old summary
+        setSummaries(prev => {
+          const newSummaries = { ...prev };
+          delete newSummaries[sessionId];
+          return newSummaries;
+        });
+        
+        // Generate a new one
+        await generateSummary(sessionId);
+      }
+    } catch (error) {
+      console.error('Error regenerating summary:', error);
+    } finally {
+      setGeneratingSummary(prev => ({ ...prev, [sessionId]: false }));
+    }
+  };
 
 
   const fixSessionSummary = async (sessionId: string) => {
@@ -215,7 +328,7 @@ export default function AllSessionsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <FloatingNavbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-28">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -371,6 +484,27 @@ export default function AllSessionsPage() {
             </div>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error Loading Sessions</h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+                <button 
+                  onClick={refreshSessions}
+                  className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline mt-2"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Sessions List */}
         {loading ? (

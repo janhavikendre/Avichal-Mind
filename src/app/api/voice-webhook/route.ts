@@ -73,11 +73,11 @@ export async function POST(request: NextRequest) {
         language: 'en-US'
       }, greeting);
 
-      // Simple listening setup - FAST RESPONSE: 1-2 seconds after user stops
+      // Optimized listening setup - ULTRA FAST RESPONSE: 1 second after user stops
       const gather = twiml.gather({
         input: ['speech'],
         timeout: 15,
-        speechTimeout: '2', // CRITICAL: 2 seconds for fast AI response
+        speechTimeout: '1', // CRITICAL: 1 second for ultra-fast AI response
         action: '/api/voice-webhook',
         method: 'POST',
         language: 'en-US',
@@ -296,11 +296,11 @@ export async function POST(request: NextRequest) {
           language: voiceConfig.language
         }, processedText);
 
-        // Simple listening setup for continued conversation - FAST RESPONSE
+        // Optimized listening setup for continued conversation - ULTRA FAST RESPONSE
         const gather = twiml.gather({
           input: ['speech'],
           timeout: 15, // Standard timeout
-          speechTimeout: '2', // FAST: 2 seconds after user stops speaking
+          speechTimeout: '1', // ULTRA FAST: 1 second after user stops speaking
           action: '/api/voice-webhook',
           method: 'POST',
           language: voiceConfig.language,
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
       const repromptGather = twiml.gather({
         input: ['speech'],
         timeout: 10,
-        speechTimeout: '2', // FAST: 2 seconds for reprompt too
+        speechTimeout: '1', // ULTRA FAST: 1 second for reprompt too
         action: '/api/voice-webhook',
         method: 'POST',
         language: retryVoice.language,

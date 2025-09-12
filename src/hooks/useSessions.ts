@@ -26,7 +26,10 @@ export function useSessions() {
 
   const fetchSessions = useCallback(async () => {
     // Don't fetch if still loading or no user is authenticated
-    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) return;
+    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) {
+      console.log('🔍 Skipping session fetch - user not ready:', { isLoaded, phoneUserLoading, user: !!user, isPhoneUser });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -41,11 +44,17 @@ export function useSessions() {
         ? `/api/session/count?phoneUserId=${phoneUser._id}`
         : '/api/session/count';
       
+      console.log('🔍 Fetching sessions from:', sessionUrl);
+      console.log('🔍 Fetching counts from:', countUrl);
+      
       // Fetch both sessions and counts in parallel
       const [sessionsResponse, countsResponse] = await Promise.all([
         fetch(sessionUrl),
         fetch(countUrl)
       ]);
+
+      console.log('📊 Sessions response status:', sessionsResponse.status);
+      console.log('📊 Counts response status:', countsResponse.status);
 
       if (sessionsResponse.ok && countsResponse.ok) {
         const [sessionsData, countsData] = await Promise.all([
@@ -56,18 +65,22 @@ export function useSessions() {
         console.log('📊 Sessions fetched:', sessionsData.sessions?.length || 0, 'sessions');
         console.log('📊 Total sessions from API:', sessionsData.pagination?.total || 'unknown');
         console.log('📊 Session counts:', countsData);
+        console.log('📊 Raw sessions data:', sessionsData);
         
         setSessions(sessionsData.sessions || []);
       } else {
-        setError('Failed to fetch sessions');
+        const sessionsError = await sessionsResponse.text();
+        const countsError = await countsResponse.text();
+        console.error('❌ Failed to fetch sessions:', { sessionsError, countsError });
+        setError(`Failed to fetch sessions: ${sessionsResponse.status} - ${sessionsError}`);
       }
     } catch (err) {
       setError('Error fetching sessions');
-      console.error('Error fetching sessions:', err);
+      console.error('❌ Error fetching sessions:', err);
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, user, phoneUserLoading, isPhoneUser]);
+  }, [isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser]);
 
   const refreshSessions = useCallback(() => {
     fetchSessions();

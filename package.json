@@ -13,11 +13,13 @@
     "db:seed": "node scripts/seed.js",
     "db:migrate": "node scripts/migrate.js",
     "check-env": "node scripts/check-env.js",
-    "fix-users": "node scripts/fix-users.js"
+    "fix-users": "node scripts/fix-users.js",
+    "migrate-summaries": "node scripts/migrate-summaries.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.31.5",
     "@clerk/themes": "^1.7.9",
+    "@elevenlabs/elevenlabs-js": "^2.15.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.3.0",
     "@radix-ui/react-progress": "^1.1.7",
