@@ -275,40 +275,42 @@ export default function ChatInterface({
 
   // Typing indicator component
   const TypingIndicator = () => (
-    <div className="flex justify-start">
-      <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 p-3 max-w-[80%] ml-2">
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-          </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">AI Assistant</span>
+    <div className="flex justify-start mb-4">
+      <div className="flex items-center space-x-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-2xl px-4 py-3 max-w-[85%] sm:max-w-[80%] shadow-sm border border-gray-200 dark:border-gray-600">
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
         </div>
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+        <div className="flex-1">
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">AI is thinking</span>
+            <div className="flex space-x-1 ml-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-medium text-gray-900 dark:text-white">
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {session?.title || 'Chat Session'}
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {language === 'hi' 
                     ? 'आपकी सहायता के लिए यहाँ हैं' 
                     : language === 'mr'
@@ -345,24 +347,25 @@ export default function ChatInterface({
       </div>
       
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 min-h-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-600 dark:text-gray-400">
             <div className="relative">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 dark:border-gray-700"></div>
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent absolute top-0"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent absolute top-0"></div>
             </div>
-            <p className="text-sm mt-3">Loading conversation...</p>
+            <p className="text-sm font-medium mt-4">Loading conversation...</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please wait while we prepare your session</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center mb-12 animate-fade-in">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h1 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
                 {user?.firstName 
                   ? (language === 'hi' ? `नमस्ते, ${user.firstName}!` : 
                      language === 'mr' ? `नमस्कार, ${user.firstName}!` : 
@@ -372,7 +375,7 @@ export default function ChatInterface({
                      'Hello!')
                 }
               </h1>
-              <p className="text-gray-600 dark:text-gray-300 mb-1">
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-2">
                 {language === 'hi' ? 'मैं आपकी कैसे मदद कर सकता हूं?' : 
                  language === 'mr' ? 'मी तुमची कशी मदत करू शकतो?' : 
                  'How can I help you today?'}
@@ -385,30 +388,30 @@ export default function ChatInterface({
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="max-w-4xl mx-auto space-y-6">
             {messages.map((message) => (
               <div
                 key={message._id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
               >
                 <div
-                  className={`max-w-[80%] ${
+                  className={`max-w-xs sm:max-w-2xl ${
                     message.role === 'user'
-                      ? 'bg-blue-500 text-white rounded-lg rounded-br-md mr-2'
-                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-gray-700 ml-2'
-                  } p-3`}
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-3xl rounded-br-lg'
+                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-3xl rounded-bl-lg border border-gray-200 dark:border-gray-700 shadow-sm'
+                  } p-4 sm:p-6`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="flex items-center space-x-2 mb-2">
-                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">AI Assistant</span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">AI Assistant</span>
                     </div>
                   )}
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
                     {message.contentText}
                   </p>
                 </div>
@@ -421,11 +424,11 @@ export default function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-end space-x-3">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-end space-x-3 sm:space-x-4">
             <div className="flex-1 relative">
-              <div className="relative bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+              <div className="relative bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all duration-200">
                 <textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
@@ -437,10 +440,10 @@ export default function ChatInterface({
                       ? 'तुमचा संदेश येथे लिहा...'
                       : 'Type your message here...'
                   }
-                  className="w-full p-3 bg-transparent resize-none focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-lg"
+                  className="w-full p-4 bg-transparent resize-none focus:outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-2xl"
                   rows={1}
                   disabled={isSending}
-                  style={{ minHeight: '44px', maxHeight: '120px' }}
+                  style={{ minHeight: '52px', maxHeight: '200px' }}
                 />
               </div>
             </div>
@@ -450,40 +453,40 @@ export default function ChatInterface({
                   <>
                     <button
                       onClick={cutRecording}
-                      className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                      className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors duration-200 shadow-md"
                       title="Cancel recording"
                     >
-                      <Scissors className="w-4 h-4" />
+                      <Scissors className="w-5 h-5" />
                     </button>
                     <button
                       onClick={stopAndSendRecording}
-                      className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                      className="p-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors duration-200 shadow-md"
                       title="Send recording"
                     >
-                      <Check className="w-4 h-4" />
+                      <Check className="w-5 h-5" />
                     </button>
                   </>
                 ) : (
                   <button
                     onClick={toggleRecording}
                     disabled={!supportsSpeech}
-                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                    className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors duration-200 disabled:opacity-50 shadow-md"
                     title="Start voice recording"
                   >
-                    <Mic className="w-4 h-4" />
+                    <Mic className="w-5 h-5" />
                   </button>
                 )
               ) : (
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || isSending}
-                  className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                  className="p-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-colors duration-200 disabled:cursor-not-allowed shadow-md"
                   title="Send message"
                 >
                   {isSending ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <Send className="w-5 h-5" />
                   )}
                 </button>
               )}
@@ -493,10 +496,10 @@ export default function ChatInterface({
           {/* Language and Mode Info */}
           <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
             <div className="flex space-x-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
                 {mode === 'voice' ? 'Voice Mode' : 'Text Mode'}
               </span>
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
                 {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
               </span>
             </div>

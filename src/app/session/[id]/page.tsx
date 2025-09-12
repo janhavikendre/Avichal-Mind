@@ -619,57 +619,79 @@ export default function SessionPage() {
         </div>
 
         {/* Messages Display - Fixed Height with Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-900 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 dark:bg-gray-900 min-h-0">
           {isLoading ? (
-            <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
-              <p className="text-sm">Loading messages...</p>
+            <div className="flex flex-col items-center justify-center h-64 text-gray-600 dark:text-gray-400">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 dark:border-gray-700"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent absolute top-0"></div>
+              </div>
+              <p className="text-sm mt-3">Loading messages...</p>
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-center text-gray-600 dark:text-gray-400 mt-8">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Messages</h3>
-              <p className="text-sm">This session doesn't have any messages yet.</p>
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Messages</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">This session doesn't have any messages yet.</p>
+              </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message._id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-[85%] sm:max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                  <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
-                    message.role === 'user' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                  }`}>
-                    <div className="text-xs sm:text-sm leading-relaxed">
-                      {message.contentText}
+            <div className="space-y-3">
+              {messages.map((message) => (
+                <div
+                  key={message._id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[80%] ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                    <div className={`px-3 py-3 rounded-lg ${
+                      message.role === 'user' 
+                        ? 'bg-blue-500 text-white rounded-br-md' 
+                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
+                    }`}>
+                      {message.role === 'assistant' && (
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">AI Assistant</span>
+                        </div>
+                      )}
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {message.contentText}
+                      </div>
+                    </div>
+                    <div className={`flex items-center justify-between mt-2 text-xs ${
+                      message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
+                    }`}>
+                      <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
+                      {message.role === 'assistant' && (
+                        <button 
+                          onClick={() => playMessage(message)}
+                          className={`ml-2 p-1 rounded ${
+                            playingMessageId === message._id 
+                              ? 'bg-red-500 text-white' 
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          }`}
+                          title={playingMessageId === message._id ? 'Stop' : 'Play'}
+                        >
+                          {playingMessageId === message._id ? 
+                            <Pause className="w-3 h-3" /> : 
+                            <Play className="w-3 h-3" />
+                          }
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className={`flex items-center justify-between mt-1 sm:mt-2 text-xs ${
-                    message.role === 'user' ? 'text-gray-500 dark:text-gray-400 justify-end' : 'text-gray-500 dark:text-gray-500'
-                  }`}>
-                    <span className="text-xs">{new Date(message.createdAt).toLocaleTimeString()}</span>
-                    {message.role === 'assistant' && (
-                      <button 
-                        onClick={() => playMessage(message)}
-                        className={`ml-2 p-1 rounded touch-button ${
-                          playingMessageId === message._id 
-                            ? 'bg-red-600 text-white' 
-                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                        }`}
-                        title={playingMessageId === message._id ? 'Stop' : 'Play'}
-                      >
-                        {playingMessageId === message._id ? 
-                          <Pause size={10} className="sm:w-3 sm:h-3" /> : 
-                          <Play size={10} className="sm:w-3 sm:h-3" />
-                        }
-                      </button>
-                    )}
-                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>
