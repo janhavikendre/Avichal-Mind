@@ -62,6 +62,14 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               {/* Navigation Links for authenticated users */}
               <SignedIn>
                 <Button
+                  onClick={() => router.push('/')}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+                >
+                  Home
+                </Button>
+                <Button
                   onClick={() => router.push('/dashboard')}
                   variant="ghost"
                   size="sm"
@@ -204,6 +212,13 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               {/* Authenticated user menu items */}
               <SignedIn>
                 <Button
+                  onClick={() => handleNavigation('/')}
+                  variant="ghost"
+                  className="w-full justify-start text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+                >
+                  Home
+                </Button>
+                <Button
                   onClick={() => handleNavigation('/dashboard')}
                   variant="ghost"
                   className="w-full justify-start text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
@@ -229,6 +244,13 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
               {/* Phone user menu items */}
               {isPhoneUser && phoneUser && (
                 <>
+                  <Button
+                    onClick={() => handleNavigation('/')}
+                    variant="ghost"
+                    className="w-full justify-start text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+                  >
+                    Home
+                  </Button>
                   <Button
                     onClick={() => handleNavigation('/dashboard')}
                     variant="ghost"

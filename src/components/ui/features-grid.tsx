@@ -113,8 +113,67 @@ export function FeaturesGrid({ className }: FeaturesGridProps) {
                 key={index}
                 className="relative group"
               >
-                <div className="relative bg-white dark:bg-gray-900 rounded-lg p-8 shadow-lg transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
-                  <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-full flex items-center justify-center mb-6 mx-auto`}>
+                <div className="relative bg-white dark:bg-gray-900 rounded-lg p-8 shadow-lg transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 overflow-hidden">
+                  {/* Background wellness pattern */}
+                  <div className="absolute top-0 right-0 w-32 h-32 opacity-5">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      {index === 0 && (
+                        // Heart pattern for suicide prevention
+                        <>
+                          <path d="M50 20 C50 15, 55 10, 60 15 C65 10, 70 15, 70 20 C70 25, 60 35, 60 35 C60 35, 50 25, 50 20 Z" fill="currentColor"/>
+                          <path d="M30 40 C30 35, 35 30, 40 35 C45 30, 50 35, 50 40 C50 45, 40 55, 40 55 C40 55, 30 45, 30 40 Z" fill="currentColor"/>
+                        </>
+                      )}
+                      {index === 1 && (
+                        // Network pattern for Gen Z
+                        <>
+                          <circle cx="30" cy="30" r="5" fill="currentColor"/>
+                          <circle cx="70" cy="30" r="5" fill="currentColor"/>
+                          <circle cx="50" cy="50" r="5" fill="currentColor"/>
+                          <circle cx="30" cy="70" r="5" fill="currentColor"/>
+                          <circle cx="70" cy="70" r="5" fill="currentColor"/>
+                          <line x1="30" y1="30" x2="70" y2="30" stroke="currentColor" strokeWidth="1"/>
+                          <line x1="30" y1="30" x2="50" y2="50" stroke="currentColor" strokeWidth="1"/>
+                          <line x1="70" y1="30" x2="50" y2="50" stroke="currentColor" strokeWidth="1"/>
+                        </>
+                      )}
+                      {index === 2 && (
+                        // Shield pattern for trauma recovery
+                        <>
+                          <path d="M50 10 L35 20 L35 40 C35 55, 50 65, 50 65 C50 65, 65 55, 65 40 L65 20 Z" fill="currentColor"/>
+                          <path d="M45 35 L48 38 L55 28" stroke="white" strokeWidth="2" fill="none"/>
+                        </>
+                      )}
+                      {index === 3 && (
+                        // Gentle waves for senior wellness
+                        <>
+                          <path d="M10 40 Q30 30, 50 40 Q70 50, 90 40" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <path d="M10 50 Q30 40, 50 50 Q70 60, 90 50" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <path d="M10 60 Q30 50, 50 60 Q70 70, 90 60" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </>
+                      )}
+                      {index === 4 && (
+                        // Flower pattern for women's wellness
+                        <>
+                          <circle cx="50" cy="50" r="8" fill="currentColor"/>
+                          <circle cx="35" cy="35" r="6" fill="currentColor"/>
+                          <circle cx="65" cy="35" r="6" fill="currentColor"/>
+                          <circle cx="35" cy="65" r="6" fill="currentColor"/>
+                          <circle cx="65" cy="65" r="6" fill="currentColor"/>
+                        </>
+                      )}
+                      {index === 5 && (
+                        // Brain waves for general mental health
+                        <>
+                          <path d="M20 30 Q40 20, 60 30 Q80 40, 100 30" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <path d="M20 50 Q40 40, 60 50 Q80 60, 100 50" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <path d="M20 70 Q40 60, 60 70 Q80 80, 100 70" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                  
+                  <div className={`w-16 h-16 bg-gradient-to-br ${feature.gradient} rounded-full flex items-center justify-center mb-6 mx-auto relative z-10`}>
                     {feature.icon}
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 text-center">

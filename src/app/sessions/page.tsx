@@ -328,7 +328,7 @@ export default function AllSessionsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <FloatingNavbar />
       
-      <div className="container mx-auto px-4 py-8 pt-28">
+      <div className="container mx-auto px-4 py-8 pt-28 lg:pt-36">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

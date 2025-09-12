@@ -52,8 +52,51 @@ export function StatisticsSection({ className }: StatisticsSectionProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {stats.map((stat, index) => (
-            <div key={index} className="bg-white dark:bg-gray-900 rounded-lg p-6 shadow-lg text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-              <div className={`w-16 h-16 bg-gradient-to-br ${stat.gradient} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            <div key={index} className="relative bg-white dark:bg-gray-900 rounded-lg p-6 shadow-lg text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden">
+              {/* Background wellness patterns */}
+              <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  {index === 0 && (
+                    // Clock pattern for 24/7
+                    <>
+                      <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="3" fill="none"/>
+                      <line x1="50" y1="50" x2="50" y2="25" stroke="currentColor" strokeWidth="3"/>
+                      <line x1="50" y1="50" x2="65" y2="50" stroke="currentColor" strokeWidth="2"/>
+                      <circle cx="50" cy="50" r="3" fill="currentColor"/>
+                    </>
+                  )}
+                  {index === 1 && (
+                    // Medical cross pattern
+                    <>
+                      <rect x="45" y="20" width="10" height="60" fill="currentColor"/>
+                      <rect x="20" y="45" width="60" height="10" fill="currentColor"/>
+                      <circle cx="30" cy="30" r="8" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      <circle cx="70" cy="70" r="8" stroke="currentColor" strokeWidth="2" fill="none"/>
+                    </>
+                  )}
+                  {index === 2 && (
+                    // Document waves pattern
+                    <>
+                      <rect x="25" y="20" width="50" height="60" stroke="currentColor" strokeWidth="2" fill="none" rx="5"/>
+                      <line x1="35" y1="35" x2="65" y2="35" stroke="currentColor" strokeWidth="2"/>
+                      <line x1="35" y1="45" x2="60" y2="45" stroke="currentColor" strokeWidth="2"/>
+                      <line x1="35" y1="55" x2="65" y2="55" stroke="currentColor" strokeWidth="2"/>
+                      <line x1="35" y1="65" x2="55" y2="65" stroke="currentColor" strokeWidth="2"/>
+                    </>
+                  )}
+                  {index === 3 && (
+                    // Sound waves pattern
+                    <>
+                      <path d="M20 50 Q35 35, 50 50 Q65 65, 80 50" stroke="currentColor" strokeWidth="3" fill="none"/>
+                      <path d="M15 50 Q30 30, 50 50 Q70 70, 85 50" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      <path d="M25 50 Q40 40, 50 50 Q60 60, 75 50" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      <circle cx="50" cy="50" r="5" fill="currentColor"/>
+                    </>
+                  )}
+                </svg>
+              </div>
+              
+              <div className={`w-16 h-16 bg-gradient-to-br ${stat.gradient} rounded-full flex items-center justify-center mx-auto mb-4 relative z-10`}>
                 <span className="text-2xl">{stat.icon}</span>
               </div>
               <h3 className="font-bold text-gray-800 dark:text-white mb-2 text-lg">
