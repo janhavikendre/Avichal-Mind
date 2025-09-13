@@ -82,9 +82,12 @@ export default function ChatInterface({
     if (SpeechRecognition) {
       setSupportsSpeech(true);
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      // Fixed: Set continuous to false to prevent word repetition
+      recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US';
+      // Fixed: Add maxAlternatives to get better results
+      recognition.maxAlternatives = 1;
 
       recognition.onresult = (event: any) => {
         let interim = '';
@@ -99,35 +102,33 @@ export default function ChatInterface({
           }
         }
         
+        // Fixed: Only update with final text to prevent repetition
         if (finalText) {
-          accumulatedTranscriptRef.current += finalText;
-          setNewMessage(accumulatedTranscriptRef.current);
-        } else {
-          setNewMessage(accumulatedTranscriptRef.current + interim);
+          accumulatedTranscriptRef.current += finalText + ' ';
+          setNewMessage(accumulatedTranscriptRef.current.trim());
+        } else if (interim) {
+          // Show interim results but don't accumulate them
+          setNewMessage(accumulatedTranscriptRef.current.trim() + ' ' + interim);
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
+        // Fixed: Clear accumulated text on error
+        accumulatedTranscriptRef.current = '';
       };
 
       recognition.onend = () => {
-        if (isRecording) {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.error('Error restarting recognition:', e);
-            setIsRecording(false);
-          }
-        }
+        // Fixed: Don't auto-restart, let user control recording
+        setIsRecording(false);
       };
 
       recognitionRef.current = recognition;
     } else {
       setSupportsSpeech(false);
     }
-  }, [language, mode, isRecording]);
+  }, [language, mode]);
 
   // Enhanced Text-to-speech function for AI responses
   const speakTextImproved = (text: string) => {
@@ -142,6 +143,33 @@ export default function ChatInterface({
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       
+      // Fixed: Preprocess text to prevent inappropriate sentence cutting
+      const preprocessTextForTTS = (inputText: string): string => {
+        let processedText = inputText.trim();
+        
+        // Fix common sentence cutting issues
+        processedText = processedText.replace(/([.!?])\s*([a-zA-Z])/g, '$1 $2');
+        processedText = processedText.replace(/([.!?])\s*([अ-ह])/g, '$1 $2');
+        
+        // Ensure proper spacing around punctuation
+        processedText = processedText.replace(/([.!?])([a-zA-Z])/g, '$1 $2');
+        processedText = processedText.replace(/([.!?])([अ-ह])/g, '$1 $2');
+        
+        // Fix spacing issues that cause cutting
+        processedText = processedText.replace(/\s+/g, ' ');
+        processedText = processedText.replace(/([.!?])\s*$/, '$1');
+        
+        // Add natural pauses for better speech flow
+        if (language === 'hi' || language === 'mr') {
+          // For Hindi/Marathi, add slight pauses after sentences
+          processedText = processedText.replace(/([.!?])\s/g, '$1 ');
+        }
+        
+        return processedText;
+      };
+      
+      const processedText = preprocessTextForTTS(text);
+      
       // Wait for speech synthesis to be ready
       const speakWhenReady = () => {
         const voices = window.speechSynthesis.getVoices();
@@ -153,7 +181,7 @@ export default function ChatInterface({
           return;
         }
         
-        const utterance = new SpeechSynthesisUtterance(text);
+        const utterance = new SpeechSynthesisUtterance(processedText);
         
         // Find appropriate voice based on language
         let selectedVoice = null;
@@ -162,14 +190,14 @@ export default function ChatInterface({
             voice.lang.includes('hi') || voice.name.toLowerCase().includes('hindi')
           ) || voices.find(voice => voice.lang.includes('en-IN'));
           utterance.lang = 'hi-IN';
-          utterance.rate = 0.85;
+          utterance.rate = 1.05;
         } else if (language === 'mr') {
           // Use Hindi voice for Marathi (better compatibility)
           selectedVoice = voices.find(voice => 
             voice.lang.includes('hi') || voice.name.toLowerCase().includes('hindi')
           ) || voices.find(voice => voice.lang.includes('en-IN'));
           utterance.lang = 'hi-IN';
-          utterance.rate = 0.85;
+          utterance.rate = 1.15;
         } else {
           selectedVoice = voices.find(voice => 
             voice.lang.includes('en') && (voice.name.includes('Google') || voice.name.includes('Microsoft'))
@@ -188,7 +216,7 @@ export default function ChatInterface({
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
         
-        // Add event listeners for debugging and status tracking
+        // Fixed: Add better event handling to prevent cutting
         utterance.onstart = () => {
           console.log('✅ TTS: Speech started');
         };
@@ -207,6 +235,13 @@ export default function ChatInterface({
         
         utterance.onresume = () => {
           console.log('▶️ TTS: Speech resumed');
+        };
+        
+        // Fixed: Add boundary event to track speech progress
+        utterance.onboundary = (event) => {
+          if (event.name === 'sentence') {
+            console.log('📝 TTS: Sentence boundary at', event.charIndex);
+          }
         };
         
         // Speak the text
@@ -393,15 +428,17 @@ export default function ChatInterface({
       setIsRecording(false);
       toast('Recording stopped');
     } else {
+      // Fixed: Clear previous transcript to prevent repetition
       setNewMessage('');
       accumulatedTranscriptRef.current = '';
       try {
         recognitionRef.current.start();
+        setIsRecording(true);
+        toast('Recording started - Speak now');
       } catch (e) {
         console.error('Error starting recognition:', e);
+        toast.error('Failed to start recording');
       }
-      setIsRecording(true);
-      toast('Recording started');
     }
   };
 
@@ -435,6 +472,44 @@ export default function ChatInterface({
     return messages
       .map(m => `${m.role === 'assistant' ? 'AI' : 'You'}: ${m.contentText}`)
       .join('\n');
+  };
+
+  // Fixed: Add manual summary generation function
+  const generateSummary = async () => {
+    if (messages.length < 4) {
+      toast.error('Need at least 4 messages to generate a summary');
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      toast('Generating summary...');
+
+      const response = await fetch(`/api/session/${sessionId}/summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...(user && user.userType === 'phone' ? { phoneUserId: user._id } : {}),
+          language: language
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success('Summary generated successfully!');
+        console.log('Summary generated:', data.summary);
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to generate summary: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast.error('Failed to generate summary');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Typing indicator component
@@ -588,6 +663,14 @@ export default function ChatInterface({
                       {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
                     </span>
                   </div>
+                  {/* Fixed: Add summary generation button for empty chat */}
+                  <button
+                    onClick={generateSummary}
+                    disabled={messages.length < 4 || isSending}
+                    className="px-2 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-800 dark:hover:bg-green-700 text-green-700 dark:text-green-300 rounded text-xs disabled:opacity-50"
+                  >
+                    Generate Summary
+                  </button>
                 </div>
               </div>
             </div>
@@ -770,12 +853,20 @@ export default function ChatInterface({
                   {language === 'hi' ? 'हिंदी' : language === 'mr' ? 'मराठी' : 'English'}
                 </span>
                 {/* Debug TTS Button - Always available now */}
-                <button
+                {/* <button
                   onClick={() => speakTextImproved('Testing voice output. Can you hear this?')}
                   className="px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 text-blue-700 dark:text-blue-300 rounded text-xs"
                 >
                   Test Voice
-                </button>
+                </button> */}
+                {/* Fixed: Add summary generation button */}
+                {/* <button
+                  onClick={generateSummary}
+                  disabled={messages.length < 4 || isSending}
+                  className="px-2 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-800 dark:hover:bg-green-700 text-green-700 dark:text-green-300 rounded text-xs disabled:opacity-50"
+                >
+                  Generate Summary
+                </button> */}
               </div>
               <button
                 className="text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"

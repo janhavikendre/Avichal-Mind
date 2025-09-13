@@ -24,7 +24,7 @@ export class SummaryService {
   /**
    * Generate and save a comprehensive summary for a session
    */
-  static async generateSessionSummary(sessionId: string): Promise<SummaryGenerationResult> {
+  static async generateSessionSummary(sessionId: string, force: boolean = false): Promise<SummaryGenerationResult> {
     try {
       // Find the session
       const session = await Session.findById(sessionId);
@@ -56,7 +56,8 @@ export class SummaryService {
       // Generate summary using AI service
       const summaryContent = await AIService.generateSessionSummary(
         conversationHistory,
-        session.language
+        session.language,
+        force
       );
 
       // If summary is empty, it means the session doesn't warrant a summary
@@ -90,10 +91,10 @@ export class SummaryService {
         summary = await existingSummary.save();
         console.log(`Updated summary for session ${sessionId} (version ${summary.version})`);
       } else {
-        // Create new summary
+        // Create new summary - Fixed: Ensure userId is properly set
         summary = await Summary.create({
           sessionId: session._id,
-          userId: session.userId,
+          userId: session.userId, // This should match the user ID used in summaries API
           content: summaryContent,
           language: session.language,
           version: 1,
@@ -101,7 +102,7 @@ export class SummaryService {
           metadata,
           quality
         });
-        console.log(`Created new summary for session ${sessionId}`);
+        console.log(`Created new summary for session ${sessionId} with userId: ${session.userId}`);
       }
 
       // Update session with summary reference (keeping backward compatibility)

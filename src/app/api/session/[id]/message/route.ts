@@ -178,6 +178,34 @@ export async function POST(
     
     await user.save();
 
+    // Fixed: Generate realtime summary after every few messages
+    const shouldGenerateRealtimeSummary = session.messageCount >= 6 && session.messageCount % 4 === 0; // Every 4 messages after 6 messages
+    
+    if (shouldGenerateRealtimeSummary) {
+      try {
+        console.log(`Generating realtime summary for session ${session._id} (${session.messageCount} messages)`);
+        
+        // Import SummaryService dynamically to avoid circular dependencies
+        const { SummaryService } = await import('@/services/summary');
+        const summaryResult = await SummaryService.generateSessionSummary(session._id.toString());
+        
+        if (summaryResult.success && !summaryResult.skipped) {
+          console.log(`Realtime summary generated for session ${session._id}:`, {
+            summaryLength: summaryResult.summary?.content.length,
+            language: summaryResult.summary?.language,
+            qualityScore: summaryResult.summary?.quality.score
+          });
+        } else if (summaryResult.skipped) {
+          console.log(`Realtime summary skipped for session ${session._id}: ${summaryResult.message}`);
+        } else {
+          console.error(`Realtime summary generation failed for session ${session._id}: ${summaryResult.message}`);
+        }
+      } catch (error) {
+        console.error('Error generating realtime summary:', error);
+        // Don't fail the message if summary generation fails
+      }
+    }
+
     return NextResponse.json({
       message: {
         _id: assistantMessage._id,

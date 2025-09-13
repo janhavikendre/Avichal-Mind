@@ -670,7 +670,7 @@ function getVoiceConfig(language: 'en' | 'hi' | 'mr'): { voice: any; language: a
       return { 
         voice: 'Polly.Aditi', // Same as Hindi - female voice with better pronunciation
         language: 'hi-IN', // Use Hindi locale for better flow
-        rate: 1.05, // Same as Hindi - slightly faster for clarity
+        rate: 1.15, // Faster than Hindi for better Marathi flow
         pitch: 1.0 // Same as Hindi - natural pitch
       };
     default:
@@ -701,7 +701,7 @@ function getFallbackVoiceConfig(language: 'en' | 'hi' | 'mr'): { voice: any; lan
       return { 
         voice: 'Polly.Raveena', // Same as Hindi fallback
         language: 'hi-IN', // Use Hindi locale for better flow
-        rate: 1.05, // Same as Hindi - slightly faster for clarity
+        rate: 1.15, // Faster than Hindi for better Marathi flow
         pitch: 1.0 // Same as Hindi - natural pitch
       };
     default:

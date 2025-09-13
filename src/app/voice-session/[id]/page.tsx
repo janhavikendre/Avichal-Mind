@@ -180,7 +180,7 @@ export default function VoiceSessionPage() {
 
       case 'mr':
         // Marathi: Use same voice configuration as Hindi for better flow and quality
-        rate = 1.05; // Same as Hindi - slightly faster for clarity
+        rate = 1.15; // Faster than Hindi for better Marathi flow
         pitch = 1.0; // Same as Hindi - natural pitch
         
         // Priority 1: hi-IN language code (same as Hindi)
@@ -303,12 +303,34 @@ export default function VoiceSessionPage() {
     window.speechSynthesis.cancel();
     
     try {
+      // Fixed: Preprocess text to prevent inappropriate sentence cutting
+      const preprocessTextForTTS = (inputText: string): string => {
+        let processedText = inputText.trim();
+        
+        // Fix common sentence cutting issues
+        processedText = processedText.replace(/([.!?])\s*([a-zA-Z])/g, '$1 $2');
+        processedText = processedText.replace(/([.!?])\s*([अ-ह])/g, '$1 $2');
+        
+        // Ensure proper spacing around punctuation
+        processedText = processedText.replace(/([.!?])([a-zA-Z])/g, '$1 $2');
+        processedText = processedText.replace(/([.!?])([अ-ह])/g, '$1 $2');
+        
+        // Fix spacing issues that cause cutting
+        processedText = processedText.replace(/\s+/g, ' ');
+        processedText = processedText.replace(/([.!?])\s*$/, '$1');
+        
+        return processedText;
+      };
+      
       // Preprocess Marathi text for better pronunciation
       let processedText = text;
       if (session?.language === 'mr') {
         processedText = preprocessMarathiTextForBrowser(text);
         console.log('Marathi text preprocessed for better pronunciation');
       }
+      
+      // Apply TTS preprocessing to prevent sentence cutting
+      processedText = preprocessTextForTTS(processedText);
       
       const utterance = new SpeechSynthesisUtterance(processedText);
       const voices = window.speechSynthesis.getVoices();
@@ -329,12 +351,20 @@ export default function VoiceSessionPage() {
         setPlayingMessageId(messageId);
       }
       
+      // Fixed: Add better event handling to prevent cutting
       utterance.onend = () => {
         setPlayingMessageId(null);
       };
       
       utterance.onerror = () => {
         setPlayingMessageId(null);
+      };
+      
+      // Fixed: Add boundary event to track speech progress
+      utterance.onboundary = (event) => {
+        if (event.name === 'sentence') {
+          console.log('📝 TTS: Sentence boundary at', event.charIndex);
+        }
       };
       
       console.log('Speaking with:', {

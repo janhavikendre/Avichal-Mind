@@ -171,7 +171,7 @@ export default function SessionPage() {
 
       case 'mr':
         // Marathi: Use same voice configuration as Hindi for better flow and quality
-        rate = 1.05; // Same as Hindi - slightly faster for clarity
+        rate = 1.15; // Faster than Hindi for better Marathi flow
         pitch = 1.0; // Same as Hindi - natural pitch
         
         // Priority 1: hi-IN language code (same as Hindi)

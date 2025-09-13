@@ -120,6 +120,36 @@ export default function SummariesPage() {
     }
   };
 
+  // Fixed: Add bulk summary generation function
+  const generateMissingSummaries = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/generate-summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(phoneUser ? { phoneUserId: phoneUser._id } : {})
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Bulk summary generation result:', data);
+        await fetchSummaries(); // Refresh the list
+        alert(`Generated ${data.stats.successful} summaries, skipped ${data.stats.skipped}, failed ${data.stats.failed}`);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to generate summaries:', errorData);
+        alert(`Failed to generate summaries: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error generating summaries:', error);
+      alert('Failed to generate summaries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if ((isLoaded && user) || (phoneUser && !phoneUserLoading)) {
       fetchSummaries();
@@ -190,65 +220,68 @@ export default function SummariesPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <FloatingNavbar />
       <div className="pt-20">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">Session Summaries</h1>
-            <Button onClick={fetchSummaries} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+        <div className="container mx-auto px-4 py-4 sm:py-8">
+          {/* Fixed: Mobile-responsive header */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Session Summaries</h1>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+              <Button 
+                onClick={generateMissingSummaries} 
+                disabled={loading} 
+                variant="outline"
+                className="w-full sm:w-auto"
+                size="sm"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Generate Missing</span>
+                <span className="sm:hidden">Generate</span>
+              </Button>
+              <Button 
+                onClick={fetchSummaries} 
+                disabled={loading}
+                className="w-full sm:w-auto"
+                size="sm"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
-          {/* Debug Info */}
-          {(user || phoneUser) && (
-            <Card className="mb-6 bg-blue-50 dark:bg-blue-900/20">
-              <CardHeader>
-                <CardTitle className="text-sm">Debug Info</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm space-y-1">
-                  <p><strong>User ID:</strong> {user?.id || phoneUser?._id}</p>
-                  <p><strong>Contact:</strong> {user?.emailAddresses?.[0]?.emailAddress || phoneUser?.phoneNumber}</p>
-                  <p><strong>Name:</strong> {user?.firstName || phoneUser?.firstName} {user?.lastName || phoneUser?.lastName}</p>
-                  <p><strong>User Type:</strong> {user ? 'Clerk User' : 'Phone User'}</p>
-                  <p><strong>Total Summaries Found:</strong> {stats.totalSummaries}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+        
 
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Summaries</CardTitle>
+          {/* Fixed: Mobile-responsive statistics cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <Card className="p-4 sm:p-6">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0">
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Summaries</CardTitle>
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalSummaries}</div>
+              <CardContent className="px-0">
+                <div className="text-xl sm:text-2xl font-bold">{stats.totalSummaries}</div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Quality</CardTitle>
+            <Card className="p-4 sm:p-6">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0">
+                <CardTitle className="text-xs sm:text-sm font-medium">Average Quality</CardTitle>
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.averageQualityScore.toFixed(1)}/10</div>
+              <CardContent className="px-0">
+                <div className="text-xl sm:text-2xl font-bold">{stats.averageQualityScore.toFixed(1)}/10</div>
                 <Progress value={stats.averageQualityScore * 10} className="mt-2" />
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Languages</CardTitle>
+            <Card className="p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-0">
+                <CardTitle className="text-xs sm:text-sm font-medium">Languages</CardTitle>
                 <Brain className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-0">
                 <div className="space-y-1">
                   {Object.entries(stats.summariesByLanguage).map(([lang, count]) => (
-                    <div key={lang} className="flex justify-between text-sm">
+                    <div key={lang} className="flex justify-between text-xs sm:text-sm">
                       <span>{getLanguageLabel(lang)}</span>
                       <span className="font-medium">{count}</span>
                     </div>
@@ -258,25 +291,25 @@ export default function SummariesPage() {
             </Card>
           </div>
 
-          {/* Filters */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center">
+          {/* Fixed: Mobile-responsive filters */}
+          <Card className="mb-4 sm:mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-sm sm:text-base">
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Language</label>
+                  <label className="block text-xs sm:text-sm font-medium mb-1">Language</label>
                   <select
                     value={filter.language || ''}
                     onChange={(e) => setFilter(prev => ({ 
                       ...prev, 
                       language: e.target.value ? e.target.value as 'en' | 'hi' | 'mr' : undefined 
                     }))}
-                    className="border rounded px-3 py-1"
+                    className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                   >
                     <option value="">All Languages</option>
                     <option value="en">English</option>
@@ -286,14 +319,14 @@ export default function SummariesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Sort By</label>
+                  <label className="block text-xs sm:text-sm font-medium mb-1">Sort By</label>
                   <select
                     value={filter.sortBy}
                     onChange={(e) => setFilter(prev => ({ 
                       ...prev, 
                       sortBy: e.target.value as 'generatedAt' | 'version' 
                     }))}
-                    className="border rounded px-3 py-1"
+                    className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                   >
                     <option value="generatedAt">Date Generated</option>
                     <option value="version">Version</option>
@@ -301,14 +334,14 @@ export default function SummariesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Order</label>
+                  <label className="block text-xs sm:text-sm font-medium mb-1">Order</label>
                   <select
                     value={filter.sortOrder}
                     onChange={(e) => setFilter(prev => ({ 
                       ...prev, 
                       sortOrder: e.target.value as 'asc' | 'desc' 
                     }))}
-                    className="border rounded px-3 py-1"
+                    className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                   >
                     <option value="desc">Newest First</option>
                     <option value="asc">Oldest First</option>
@@ -329,73 +362,82 @@ export default function SummariesPage() {
             </div>
           ) : summaries.length === 0 ? (
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 px-4 sm:px-6">
                 <div className="text-center">
-                  <Brain className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No summaries yet</h3>
-                  <p className="text-gray-600">
+                  <Brain className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-4" />
+                  <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No summaries yet</h3>
+                  <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                     Complete some sessions to generate summaries. Only meaningful conversations are summarized.
                   </p>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {summaries.map((summary) => (
                 <Card key={summary._id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(summary.generatedAt).toLocaleDateString()}
-                          <Badge variant="outline">
-                            {getLanguageLabel(summary.language)}
-                          </Badge>
-                          <Badge variant="secondary">
-                            v{summary.version}
-                          </Badge>
+                  <CardHeader className="pb-3">
+                    {/* Fixed: Mobile-responsive header */}
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
+                      <div className="flex-1">
+                        <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm sm:text-base">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            <span className="text-xs sm:text-sm">
+                              {new Date(summary.generatedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              {getLanguageLabel(summary.language)}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              v{summary.version}
+                            </Badge>
+                          </div>
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-xs sm:text-sm mt-1">
                           {summary.metadata.messageCount} messages
                           {summary.metadata.sessionDuration && 
                             ` • ${Math.round(summary.metadata.sessionDuration / 60)} minutes`
                           }
                         </CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between sm:justify-end gap-2">
                         <div className="flex items-center gap-1">
                           <div 
                             className={`w-3 h-3 rounded-full ${getQualityColor(summary.quality.score)}`}
                             title={`Quality Score: ${summary.quality.score}/10`}
                           />
-                          <span className="text-sm text-gray-600">{summary.quality.score}/10</span>
+                          <span className="text-xs sm:text-sm text-gray-600">{summary.quality.score}/10</span>
                         </div>
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => regenerateSummary(summary.sessionId)}
+                          className="text-xs"
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
-                          Regenerate
+                          <span className="hidden sm:inline">Regenerate</span>
+                          <span className="sm:hidden">Regen</span>
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Summary Content */}
+                  <CardContent className="pt-0">
+                    <div className="space-y-3 sm:space-y-4">
+                      {/* Fixed: Mobile-responsive summary content */}
                       <div className="prose prose-sm max-w-none">
-                        <p className="text-gray-800 leading-relaxed">{summary.content}</p>
+                        <p className="text-sm sm:text-base text-gray-800 leading-relaxed">{summary.content}</p>
                       </div>
 
-                      {/* Metadata */}
-                      <div className="border-t pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Fixed: Mobile-responsive metadata */}
+                      <div className="border-t pt-3 sm:pt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           {/* Topics */}
                           {summary.metadata.mainTopics.length > 0 && (
                             <div>
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Main Topics</h4>
+                              <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Main Topics</h4>
                               <div className="flex flex-wrap gap-1">
                                 {summary.metadata.mainTopics.map((topic, index) => (
                                   <Badge key={index} variant="secondary" className="text-xs">
@@ -409,12 +451,12 @@ export default function SummariesPage() {
                           {/* Emotional State */}
                           {summary.metadata.emotionalState && (
                             <div>
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">Emotional State</h4>
+                              <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Emotional State</h4>
                               <div className="flex items-center gap-2">
-                                <span className="text-lg">
+                                <span className="text-base sm:text-lg">
                                   {getEmotionalStateIcon(summary.metadata.emotionalState)}
                                 </span>
-                                <span className="text-sm capitalize">
+                                <span className="text-xs sm:text-sm capitalize">
                                   {summary.metadata.emotionalState}
                                 </span>
                               </div>
@@ -422,15 +464,15 @@ export default function SummariesPage() {
                           )}
                         </div>
 
-                        {/* Action Items */}
+                        {/* Fixed: Mobile-responsive action items */}
                         {summary.metadata.actionItems && summary.metadata.actionItems.length > 0 && (
-                          <div className="mt-4">
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">Suggested Actions</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
+                          <div className="mt-3 sm:mt-4">
+                            <h4 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Suggested Actions</h4>
+                            <ul className="text-xs sm:text-sm text-gray-600 space-y-1">
                               {summary.metadata.actionItems.map((item, index) => (
                                 <li key={index} className="flex items-start gap-2">
-                                  <span className="text-blue-500 mt-1">•</span>
-                                  <span>{item}</span>
+                                  <span className="text-blue-500 mt-1 text-xs">•</span>
+                                  <span className="leading-relaxed">{item}</span>
                                 </li>
                               ))}
                             </ul>

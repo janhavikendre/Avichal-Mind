@@ -39,6 +39,69 @@ export default function DashboardPage() {
     }
   }, [isLoaded, user]);
 
+  // Fixed: Trigger immediate data fetch when user is ready - Enhanced for both user types
+  useEffect(() => {
+    const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
+    if (isUserReady && refreshSessions) {
+      console.log('🚀 Dashboard: User authentication confirmed, triggering immediate data fetch', {
+        clerkUser: !!user,
+        phoneUser: !!phoneUser,
+        isLoaded,
+        isPhoneUser
+      });
+      // Trigger immediate data fetch for both Clerk and phone users
+      refreshSessions();
+    }
+  }, [isLoaded, user, isPhoneUser, phoneUser, refreshSessions]);
+
+  // Additional trigger for Clerk user specifically with delayed fetch
+  useEffect(() => {
+    if (isLoaded && user && refreshSessions) {
+      console.log('🚀 Dashboard: Clerk user loaded, ensuring data fetch');
+      refreshSessions();
+      
+      // Also fetch after a small delay to ensure everything is settled
+      const timeoutId = setTimeout(() => {
+        console.log('🚀 Dashboard: Delayed fetch for Clerk user');
+        refreshSessions();
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isLoaded, user, refreshSessions]);
+
+  // Additional trigger for phone user specifically with delayed fetch
+  useEffect(() => {
+    if (isPhoneUser && phoneUser && refreshSessions) {
+      console.log('🚀 Dashboard: Phone user loaded, ensuring data fetch');
+      refreshSessions();
+      
+      // Also fetch after a small delay to ensure everything is settled
+      const timeoutId = setTimeout(() => {
+        console.log('🚀 Dashboard: Delayed fetch for phone user');
+        refreshSessions();
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isPhoneUser, phoneUser, refreshSessions]);
+
+  // Additional trigger when page becomes visible (user navigates to dashboard)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
+        if (isUserReady && refreshSessions) {
+          console.log('🚀 Dashboard: Page became visible, triggering data fetch');
+          refreshSessions();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isLoaded, user, isPhoneUser, phoneUser, refreshSessions]);
+
   const syncUser = async () => {
     try {
       const response = await fetch('/api/sync-user', {
@@ -60,8 +123,10 @@ export default function DashboardPage() {
   };
 
 
-  // Show loading if either Clerk or phone user is still loading
-  if (!isLoaded || phoneUserLoading) {
+  // Fixed: Show loading only when both Clerk and phone user are still loading
+  const isStillLoading = (!isLoaded && !phoneUserLoading) || (isLoaded && !user && !isPhoneUser);
+  
+  if (isStillLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
         <div className="text-center">

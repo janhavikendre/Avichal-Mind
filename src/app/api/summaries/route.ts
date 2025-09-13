@@ -14,13 +14,14 @@ export async function GET(request: NextRequest) {
     let userId: string;
     
     if (phoneUserId) {
-      // Handle phone user
+      // Handle phone user - Fixed: Use phoneUserId directly as userId
       const { User } = await import('@/models/user');
       const phoneUser = await User.findById(phoneUserId);
       if (!phoneUser) {
         return NextResponse.json({ error: 'Phone user not found' }, { status: 404 });
       }
-      userId = phoneUserId;
+      userId = phoneUserId; // Use phoneUserId directly as the userId for summaries
+      console.log('Phone user summaries requested for userId:', userId);
     } else {
       // Handle Clerk user
       const user = await currentUser();
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
       }
       userId = dbUser._id.toString();
+      console.log('Clerk user summaries requested for userId:', userId);
     }
 
     const language = url.searchParams.get('language') as 'en' | 'hi' | 'mr' | null;

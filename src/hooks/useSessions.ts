@@ -23,11 +23,20 @@ export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const fetchSessions = useCallback(async () => {
-    // Don't fetch if still loading or no user is authenticated
-    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) {
-      console.log('🔍 Skipping session fetch - user not ready:', { isLoaded, phoneUserLoading, user: !!user, isPhoneUser });
+    // Fixed: Better logic for determining when to fetch data
+    const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
+    const isStillLoading = (!isLoaded && !phoneUserLoading) || (isLoaded && !user && !isPhoneUser);
+    
+    if (isStillLoading) {
+      console.log('🔍 Skipping session fetch - still loading:', { isLoaded, phoneUserLoading, user: !!user, isPhoneUser });
+      return;
+    }
+    
+    if (!isUserReady) {
+      console.log('🔍 Skipping session fetch - no authenticated user:', { isLoaded, phoneUserLoading, user: !!user, isPhoneUser });
       return;
     }
 
@@ -46,6 +55,7 @@ export function useSessions() {
       
       console.log('🔍 Fetching sessions from:', sessionUrl);
       console.log('🔍 Fetching counts from:', countUrl);
+      console.log('🔍 User ready for fetch:', { isPhoneUser, phoneUser: !!phoneUser, clerkUser: !!user });
       
       // Fetch both sessions and counts in parallel
       const [sessionsResponse, countsResponse] = await Promise.all([
@@ -68,19 +78,38 @@ export function useSessions() {
         console.log('📊 Raw sessions data:', sessionsData);
         
         setSessions(sessionsData.sessions || []);
+        setRetryCount(0); // Reset retry count on successful fetch
       } else {
         const sessionsError = await sessionsResponse.text();
         const countsError = await countsResponse.text();
         console.error('❌ Failed to fetch sessions:', { sessionsError, countsError });
         setError(`Failed to fetch sessions: ${sessionsResponse.status} - ${sessionsError}`);
+        
+        // Retry logic for failed requests
+        if (retryCount < 3) {
+          console.log(`🔄 Retrying session fetch (attempt ${retryCount + 1}/3)...`);
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            fetchSessions();
+          }, 1000 * (retryCount + 1)); // Exponential backoff
+        }
       }
     } catch (err) {
       setError('Error fetching sessions');
       console.error('❌ Error fetching sessions:', err);
+      
+      // Retry logic for network errors
+      if (retryCount < 3) {
+        console.log(`🔄 Retrying session fetch after error (attempt ${retryCount + 1}/3)...`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchSessions();
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+      }
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser]);
+  }, [isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser, retryCount]);
 
   const refreshSessions = useCallback(() => {
     fetchSessions();
@@ -89,6 +118,31 @@ export function useSessions() {
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Enhanced: Immediate fetch when authentication state changes for both Clerk and phone users
+  useEffect(() => {
+    const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
+    if (isUserReady) {
+      console.log('🚀 User authentication confirmed - triggering immediate data fetch', {
+        clerkUser: !!user,
+        phoneUser: !!phoneUser,
+        isLoaded,
+        isPhoneUser,
+        currentSessions: sessions.length
+      });
+      
+      // Immediate fetch
+      fetchSessions();
+      
+      // Also fetch after a small delay to ensure authentication is fully settled
+      const timeoutId = setTimeout(() => {
+        console.log('🚀 Delayed fetch to ensure authentication is fully settled');
+        fetchSessions();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isLoaded, user, isPhoneUser, phoneUser, fetchSessions]);
 
   // Auto-refresh when window gains focus (user returns from session)
   useEffect(() => {
@@ -102,7 +156,8 @@ export function useSessions() {
 
   // Auto-refresh every 30 seconds when page is visible
   useEffect(() => {
-    if ((!isLoaded && !phoneUserLoading) || (!user && !isPhoneUser)) return;
+    const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
+    if (!isUserReady) return;
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -111,7 +166,7 @@ export function useSessions() {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [fetchSessions, isLoaded, user, phoneUserLoading, isPhoneUser]);
+  }, [fetchSessions, isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser]);
 
   // Calculate stats
   const stats = {

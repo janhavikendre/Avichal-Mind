@@ -199,7 +199,7 @@ export default function SummariesPage() {
             </Button>
           </div>
 
-          {/* Debug Info */}
+          {/* Debug Info
           {(user || phoneUser) && (
             <Card className="mb-6 bg-blue-50 dark:bg-blue-900/20">
               <CardHeader>
@@ -215,7 +215,7 @@ export default function SummariesPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

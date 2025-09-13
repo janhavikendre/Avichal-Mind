@@ -1095,11 +1095,12 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
 
   static async generateSessionSummary(
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    language: 'en' | 'hi' | 'mr'
+    language: 'en' | 'hi' | 'mr',
+    force: boolean = false
   ): Promise<string> {
     try {
       if (!hasOpenAIKey || !openai) {
-        return this.generateFallbackSummary(messages, language);
+        return this.generateFallbackSummary(messages, language, force);
       }
 
       const userMessages = messages.filter(msg => msg.role === 'user');
@@ -1111,26 +1112,32 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
 
       console.log(`Session language detected: ${actualLanguage}, generating summary in ${languageText}`);
 
-      // Check if session has sufficient interaction for a meaningful summary
-      // Require at least 2 meaningful user messages and at least 1 assistant response
+      // Fixed: More lenient criteria for summary generation
+      // Require at least 1 meaningful user message and at least 1 assistant response
       const meaningfulUserMessages = userMessages.filter(msg => 
-        msg.content.trim().length > 10 && 
+        msg.content.trim().length > 5 && 
         !this.isJustGreeting(msg.content) &&
         !this.isCasualGreeting(msg.content)
       );
 
-      if (meaningfulUserMessages.length < 2 || assistantMessages.length < 1) {
-        console.log(`Session has insufficient meaningful interaction (${meaningfulUserMessages.length} meaningful user messages, ${assistantMessages.length} assistant responses), skipping summary generation`);
-        return ''; // Return empty string to indicate no summary should be generated
+      // More lenient: Allow summaries for sessions with at least 1 meaningful interaction
+      if (meaningfulUserMessages.length < 1 || assistantMessages.length < 1) {
+        if (force) {
+          console.log(`Force mode: Generating summary despite minimal interaction (${meaningfulUserMessages.length} meaningful user messages, ${assistantMessages.length} assistant responses)`);
+        } else {
+          console.log(`Session has insufficient interaction (${meaningfulUserMessages.length} meaningful user messages, ${assistantMessages.length} assistant responses), skipping summary generation`);
+          return ''; // Return empty string to indicate no summary should be generated
+        }
       }
 
-      // Check if user shared any actual problems/concerns
+      // Fixed: Even more lenient - allow summaries for any meaningful interaction
       const hasRealProblems = meaningfulUserMessages.some(msg => 
         this.indicatesProblemDiscussion(msg.content)
       );
 
-      if (!hasRealProblems) {
-        console.log(`Session contains only greetings/casual conversation, no real problems discussed, skipping summary generation`);
+      // Only skip if there's very minimal interaction (less than 2 meaningful messages) and not forcing
+      if (!hasRealProblems && meaningfulUserMessages.length < 2 && !force) {
+        console.log(`Session contains very limited meaningful interaction (${meaningfulUserMessages.length} messages), skipping summary generation`);
         return '';
       }
 
@@ -1182,11 +1189,11 @@ ABSOLUTE REQUIREMENT: The entire response must be written in ${languageText} lan
       } else {
         // If AI didn't follow language instruction, use fallback
         console.log(`Language validation failed, using fallback summary in ${actualLanguage}`);
-        return this.generateFallbackSummary(messages, actualLanguage);
+        return this.generateFallbackSummary(messages, actualLanguage, force);
       }
     } catch (error) {
       console.error('Error generating session summary:', error);
-      return this.generateFallbackSummary(messages, language);
+      return this.generateFallbackSummary(messages, language, force);
     }
   }
 
@@ -1369,16 +1376,20 @@ ABSOLUTE REQUIREMENT: The entire response must be written in ${languageText} lan
 
   private static generateFallbackSummary(
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    language: 'en' | 'hi' | 'mr'
+    language: 'en' | 'hi' | 'mr',
+    force: boolean = false
   ): string {
     const userMessages = messages.filter(msg => msg.role === 'user');
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
     
-    // Check if session has sufficient interaction for a meaningful summary
-    // Require at least 3 user messages and 2 assistant responses for a meaningful conversation
-    if (userMessages.length < 3 || assistantMessages.length < 2) {
-      console.log(`Fallback: Session has insufficient interaction (${userMessages.length} user messages, ${assistantMessages.length} assistant responses), returning empty summary`);
-      return ''; // Return empty string to indicate no summary should be generated
+    // Fixed: More lenient fallback criteria - require at least 1 user message and 1 assistant response
+    if (userMessages.length < 1 || assistantMessages.length < 1) {
+      if (force) {
+        console.log(`Fallback: Force mode - generating summary despite minimal interaction (${userMessages.length} user messages, ${assistantMessages.length} assistant responses)`);
+      } else {
+        console.log(`Fallback: Session has insufficient interaction (${userMessages.length} user messages, ${assistantMessages.length} assistant responses), returning empty summary`);
+        return ''; // Return empty string to indicate no summary should be generated
+      }
     }
     
     // Analyze the conversation to create a more meaningful summary
