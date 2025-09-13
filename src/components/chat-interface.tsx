@@ -55,6 +55,7 @@ export default function ChatInterface({
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [hasVoiceTranscript, setHasVoiceTranscript] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export default function ChatInterface({
         if (finalText) {
           accumulatedTranscriptRef.current += finalText + ' ';
           setNewMessage(accumulatedTranscriptRef.current.trim());
+          setHasVoiceTranscript(true); // Mark that we have a voice transcript ready
         } else if (interim) {
           // Show interim results but don't accumulate them
           setNewMessage(accumulatedTranscriptRef.current.trim() + ' ' + interim);
@@ -117,6 +119,7 @@ export default function ChatInterface({
         setIsRecording(false);
         // Fixed: Clear accumulated text on error
         accumulatedTranscriptRef.current = '';
+        setHasVoiceTranscript(false);
       };
 
       recognition.onend = () => {
@@ -431,6 +434,7 @@ export default function ChatInterface({
       // Fixed: Clear previous transcript to prevent repetition
       setNewMessage('');
       accumulatedTranscriptRef.current = '';
+      setHasVoiceTranscript(false);
       try {
         recognitionRef.current.start();
         setIsRecording(true);
@@ -451,6 +455,7 @@ export default function ChatInterface({
     setIsRecording(false);
     setNewMessage('');
     accumulatedTranscriptRef.current = '';
+    setHasVoiceTranscript(false);
     toast('Recording discarded');
   };
 
@@ -463,6 +468,7 @@ export default function ChatInterface({
     setIsRecording(false);
     const finalText = (newMessage.trim() || accumulatedTranscriptRef.current.trim());
     accumulatedTranscriptRef.current = '';
+    setHasVoiceTranscript(false);
     if (!finalText) return;
     setNewMessage(finalText);
     await sendMessage();
@@ -612,27 +618,46 @@ export default function ChatInterface({
                         <>
                           <button
                             onClick={cutRecording}
-                            className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                            className="p-3 sm:p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                             title="Cancel recording"
                           >
-                            <Scissors className="w-4 h-4" />
+                            <Scissors className="w-5 h-5 sm:w-4 sm:h-4" />
                           </button>
                           <button
                             onClick={stopAndSendRecording}
-                            className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                            className="p-3 sm:p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                             title="Send recording"
                           >
-                            <Check className="w-4 h-4" />
+                            <Check className="w-5 h-5 sm:w-4 sm:h-4" />
+                          </button>
+                        </>
+                      ) : hasVoiceTranscript ? (
+                        // Show send button when voice transcript is ready
+                        <>
+                          <button
+                            onClick={cutRecording}
+                            className="p-3 sm:p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
+                            title="Cancel recording"
+                          >
+                            <Scissors className="w-5 h-5 sm:w-4 sm:h-4" />
+                          </button>
+                          <button
+                            onClick={stopAndSendRecording}
+                            className="p-3 sm:p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
+                            title="Send recording"
+                          >
+                            <Check className="w-5 h-5 sm:w-4 sm:h-4" />
                           </button>
                         </>
                       ) : (
                         <button
                           onClick={toggleRecording}
                           disabled={!supportsSpeech}
-                          className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                          className="flex items-center space-x-2 px-4 py-3 sm:px-3 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 min-w-[120px] min-h-[44px] sm:min-w-[120px] sm:min-h-[44px]"
                           title="Start voice recording"
                         >
-                          <Mic className="w-4 h-4" />
+                          <Mic className="w-5 h-5 sm:w-4 sm:h-4 flex-shrink-0" />
+                          <span className="text-sm">Tap to speak</span>
                         </button>
                       )
                     ) : (
@@ -802,27 +827,46 @@ export default function ChatInterface({
                     <>
                       <button
                         onClick={cutRecording}
-                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                        className="p-3 sm:p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                         title="Cancel recording"
                       >
-                        <Scissors className="w-4 h-4" />
+                        <Scissors className="w-5 h-5 sm:w-4 sm:h-4" />
                       </button>
                       <button
                         onClick={stopAndSendRecording}
-                        className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                        className="p-3 sm:p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                         title="Send recording"
                       >
-                        <Check className="w-4 h-4" />
+                        <Check className="w-5 h-5 sm:w-4 sm:h-4" />
+                      </button>
+                    </>
+                  ) : hasVoiceTranscript ? (
+                    // Show send button when voice transcript is ready
+                    <>
+                      <button
+                        onClick={cutRecording}
+                        className="p-3 sm:p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
+                        title="Cancel recording"
+                      >
+                        <Scissors className="w-5 h-5 sm:w-4 sm:h-4" />
+                      </button>
+                      <button
+                        onClick={stopAndSendRecording}
+                        className="p-3 sm:p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
+                        title="Send recording"
+                      >
+                        <Check className="w-5 h-5 sm:w-4 sm:h-4" />
                       </button>
                     </>
                   ) : (
                     <button
                       onClick={toggleRecording}
                       disabled={!supportsSpeech}
-                      className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                      className="flex items-center space-x-2 px-4 py-3 sm:px-3 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 min-w-[120px] min-h-[44px] sm:min-w-[120px] sm:min-h-[44px]"
                       title="Start voice recording"
                     >
-                      <Mic className="w-4 h-4" />
+                      <Mic className="w-5 h-5 sm:w-4 sm:h-4 flex-shrink-0" />
+                      <span className="text-sm">Tap to speak</span>
                     </button>
                   )
                 ) : (
@@ -830,13 +874,13 @@ export default function ChatInterface({
                   <button
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || isSending}
-                    className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                    className="p-3 sm:p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                     title="Send message"
                   >
                     {isSending ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                      <Send className="w-4 h-4" />
+                      <Send className="w-5 h-5 sm:w-4 sm:h-4" />
                     )}
                   </button>
                 )}
