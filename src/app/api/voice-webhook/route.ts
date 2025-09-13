@@ -249,23 +249,40 @@ export async function POST(request: NextRequest) {
         const userName = user.firstName || 'friend';
         console.log('🤖 Generating enhanced AI response for:', speechResult, 'in language:', detectedLanguage);
         
-        // Get conversation history for context
+        // Add quick acknowledgment to reduce perceived delay for Twilio calls
+        const quickAck = detectedLanguage === 'hi' ? 'हाँ, मैं सुन रहा हूँ।' : 
+                        detectedLanguage === 'mr' ? 'हो, मी ऐकत आहे.' : 
+                        'Yes, I hear you.';
+        
+        twiml.say({
+          voice: getVoiceConfigWithFallback(detectedLanguage).voice,
+          language: getVoiceConfigWithFallback(detectedLanguage).language
+        }, quickAck);
+        
+        // Get conversation history for context (reduced for faster response)
         const recentMessages = await Message.find({ sessionId: session._id })
           .sort({ createdAt: -1 })
-          .limit(10);
+          .limit(5); // Reduced from 10 to 5 for faster query
         
         const conversationHistory = recentMessages.reverse().map(msg => ({
           role: msg.role,
           content: msg.contentText
         }));
         
-        // Enhanced AI service call with conversation context
-        const aiResponse = await AIService.generateResponse(
+        // Enhanced AI service call with conversation context (optimized for Twilio calls)
+        const aiResponsePromise = AIService.generateResponseForTwilioCall(
           speechResult, 
           detectedLanguage, 
           userName,
           conversationHistory
         );
+        
+        // Add timeout to prevent hanging for Twilio calls
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI response timeout')), 8000)
+        );
+        
+        const aiResponse = await Promise.race([aiResponsePromise, timeoutPromise]) as any;
         
         console.log('✅ Enhanced AI response generated:', aiResponse.text);
         

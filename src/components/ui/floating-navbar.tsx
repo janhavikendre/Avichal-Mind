@@ -103,6 +103,44 @@ export function FloatingNavbar({ className }: FloatingNavbarProps) {
                 />
               </SignedIn>
               
+              {/* Navigation Links for phone users */}
+              {isPhoneUser && phoneUser && (
+                <>
+                  <Button
+                    onClick={() => router.push('/')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+                  >
+                    Home
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/dashboard')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/sessions')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+                  >
+                    Sessions
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/summaries')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-medium"
+                  >
+                    Summaries
+                  </Button>
+                </>
+              )}
+              
               {/* Show sign in/up buttons only if neither Clerk user nor phone user is logged in */}
               <SignedOut>
                 {!isPhoneUser && (

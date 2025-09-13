@@ -215,6 +215,26 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
     userName: string,
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<AIResponse> {
+    return this.generateResponseInternal(userMessage, language, userName, conversationHistory, false);
+  }
+
+  // Optimized method specifically for Twilio phone calls
+  static async generateResponseForTwilioCall(
+    userMessage: string,
+    language: 'en' | 'hi' | 'mr',
+    userName: string,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  ): Promise<AIResponse> {
+    return this.generateResponseInternal(userMessage, language, userName, conversationHistory, true);
+  }
+
+  private static async generateResponseInternal(
+    userMessage: string,
+    language: 'en' | 'hi' | 'mr',
+    userName: string,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+    isTwilioCall: boolean = false
+  ): Promise<AIResponse> {
     // Track API usage
     this.apiStats.totalRequests++;
     
@@ -259,27 +279,38 @@ Remember: Be warm, natural, and genuinely helpful. Provide specific support base
         ? `\n\nRELEVANT KNOWLEDGE FROM PSYCHIATRY TEXTBOOKS:\n${relevantKnowledge.join('\n\n')}\n\nUse this knowledge to provide accurate, evidence-based information while maintaining a warm, conversational tone.`
         : '';
 
-      // Create the full prompt with conversation history for natural voice response
+      // Create prompt based on call type
       const languageText = language === 'hi' ? 'Hindi' : language === 'mr' ? 'Marathi' : 'English';
-      const fullPrompt = `${this.systemPrompt}${knowledgeContext}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nCRITICAL: Respond specifically to what ${userName} just said. Do NOT give generic responses like "What's on your mind?" or "How can I help?" when they've shared something specific. Address their exact concern or question. Respond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend). IMPORTANT: Only add the medical disclaimer when giving specific mental health advice or coping strategies, NOT for casual conversations or simple acknowledgments.`;
+      let fullPrompt: string;
+      let systemPromptToUse: string;
+      
+      if (isTwilioCall) {
+        // Optimized for Twilio phone calls - shorter and faster
+        systemPromptToUse = `You are Avichal Mind, a caring mental wellness assistant. Provide supportive, empathetic responses. Do NOT diagnose or prescribe treatment. Respond in ${languageText} as if talking to ${userName} over the phone. Keep responses conversational and brief (2-3 sentences max).`;
+        fullPrompt = `${systemPromptToUse}${knowledgeContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nRespond specifically to what ${userName} said. Be warm and caring. Maximum 3 sentences.`;
+      } else {
+        // Full prompt for website voice sessions
+        systemPromptToUse = this.systemPrompt;
+        fullPrompt = `${this.systemPrompt}${knowledgeContext}\n\n${conversationalPrompt}\n\nRespond in ${languageText} as if you're having a warm, caring conversation with ${userName} over the phone.${conversationContext}\n\nCurrent message from ${userName}: "${userMessage}"\n\nCRITICAL: Respond specifically to what ${userName} just said. Do NOT give generic responses like "What's on your mind?" or "How can I help?" when they've shared something specific. Address their exact concern or question. Respond naturally and conversationally (maximum 4-5 sentences, no formatting, speak like a caring friend). IMPORTANT: Only add the medical disclaimer when giving specific mental health advice or coping strategies, NOT for casual conversations or simple acknowledgments.`;
+      }
 
       // Optimized for voice calls - reduced retries and faster processing
       let text = '';
       let retryCount = 0;
-      const maxRetries = 1; // Reduced from 2 to 1 for faster response
+      const maxRetries = isTwilioCall ? 0 : 1; // No retries for Twilio calls, 1 retry for website
       
       while (retryCount <= maxRetries) {
         try {
           const completion = await openai.chat.completions.create({
-            model: 'gpt-4',
+            model: isTwilioCall ? 'gpt-3.5-turbo' : 'gpt-4', // Faster model for Twilio calls
             messages: [
-              { role: 'system', content: this.systemPrompt },
+              { role: 'system', content: systemPromptToUse },
               { role: 'user', content: fullPrompt }
             ],
-            max_tokens: 300, // Reduced from 500 for faster response
+            max_tokens: isTwilioCall ? 100 : 300, // Shorter responses for Twilio calls
             temperature: 0.7,
             stream: false // Ensure no streaming for faster completion
-          });
+          }, isTwilioCall ? { timeout: 10000 } : {}); // Timeout only for Twilio calls
           
           text = completion.choices[0]?.message?.content || '';
           
