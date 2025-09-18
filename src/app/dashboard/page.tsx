@@ -30,8 +30,16 @@ interface Session {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
-  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser } = usePhoneUser();
+  const { phoneUser, isLoading: phoneUserLoading, isPhoneUser, clearPhoneUser } = usePhoneUser();
   const { sessions, loading, stats, refreshSessions } = useSessions();
+
+  // Prevent authentication conflicts - if both are authenticated, prefer Clerk
+  useEffect(() => {
+    if (isLoaded && user && isPhoneUser && phoneUser) {
+      console.log('🔧 Dashboard: Authentication conflict detected, clearing phone user');
+      clearPhoneUser();
+    }
+  }, [isLoaded, user, isPhoneUser, phoneUser, clearPhoneUser]);
 
   useEffect(() => {
     if (isLoaded && user) {

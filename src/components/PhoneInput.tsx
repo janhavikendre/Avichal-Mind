@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { Phone, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 interface PhoneInputProps {
   className?: string;
@@ -15,7 +16,31 @@ export function PhoneInput({ className }: PhoneInputProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [userName, setUserName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { isSignedIn } = useUser();
   const router = useRouter();
+
+  // Prevent phone authentication if user is already signed in with Clerk
+  if (isSignedIn) {
+    return (
+      <div className="text-center p-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+          <Phone className="w-8 h-8 text-blue-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          Already Signed In
+        </h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
+          You're already authenticated. Please use your dashboard for mental wellness support.
+        </p>
+        <Button 
+          onClick={() => router.push('/dashboard')}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          Go to Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   const formatPhoneNumber = (value: string) => {
     // Remove all non-numeric characters
@@ -98,6 +123,12 @@ export function PhoneInput({ className }: PhoneInputProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle authentication conflict
+        if (response.status === 409 && data.redirectUrl) {
+          toast.error(data.error);
+          router.push(data.redirectUrl);
+          return;
+        }
         throw new Error(data.error || "Failed to initiate call");
       }
 

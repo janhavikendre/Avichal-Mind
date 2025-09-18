@@ -6,6 +6,7 @@ import { PhoneInput } from "@/components/PhoneInput";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { usePhoneUser } from "@/hooks/usePhoneUser";
 import { Shield, Clock, Globe, CheckCircle, Star, Users, Heart, Brain } from "lucide-react";
 
 interface HeroSectionProps {
@@ -14,6 +15,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ className }: HeroSectionProps) {
   const { isSignedIn, isLoaded } = useUser();
+  const { isPhoneUser } = usePhoneUser();
   const router = useRouter();
 
   const handleStartJourney = () => {
@@ -180,93 +182,95 @@ export function HeroSection({ className }: HeroSectionProps) {
             </div>
           </div>
 
-          {/* Phone Input Section */}
-          <div id="phone-input" className="mb-20">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-10">
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                  Get Immediate Support
-                </h2>
-                <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                  Professional voice support available 24/7. Our AI assistant provides evidence-based guidance with licensed professional oversight.
-                </p>
-              </div>
-              
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
-                {/* Phone Input Form */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl">
-                  <PhoneInput />
+          {/* Phone Input Section - Only show if user is not authenticated via Clerk */}
+          {!isSignedIn && (
+            <div id="phone-input" className="mb-20">
+              <div className="max-w-6xl mx-auto">
+                <div className="text-center mb-10">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                    Get Immediate Support
+                  </h2>
+                  <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                    Professional voice support available 24/7. Our AI assistant provides evidence-based guidance with licensed professional oversight.
+                  </p>
                 </div>
                 
-                {/* Wellness Support Visual */}
-                <div className="relative">
-                  <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-green-900/20 rounded-2xl p-8 h-full min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden">
-                    {/* Background pattern */}
-                    <div className="absolute inset-0 opacity-10">
-                      <svg viewBox="0 0 400 400" className="w-full h-full">
-                        {/* Support network visualization */}
-                        <circle cx="200" cy="200" r="60" fill="#6366f1" opacity="0.3"/>
-                        <circle cx="200" cy="200" r="40" fill="#8b5cf6" opacity="0.4"/>
-                        <circle cx="200" cy="200" r="20" fill="#ec4899" opacity="0.5"/>
-                        
-                        {/* Connection nodes */}
-                        <circle cx="120" cy="120" r="15" fill="#10b981" opacity="0.4"/>
-                        <circle cx="280" cy="120" r="15" fill="#f59e0b" opacity="0.4"/>
-                        <circle cx="120" cy="280" r="15" fill="#ef4444" opacity="0.4"/>
-                        <circle cx="280" cy="280" r="15" fill="#3b82f6" opacity="0.4"/>
-                        
-                        {/* Connection lines */}
-                        <line x1="200" y1="200" x2="120" y2="120" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
-                        <line x1="200" y1="200" x2="280" y2="120" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
-                        <line x1="200" y1="200" x2="120" y2="280" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
-                        <line x1="200" y1="200" x2="280" y2="280" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
-                        
-                        {/* Floating hearts */}
-                        <path d="M50 50 C50 45, 55 40, 60 45 C65 40, 70 45, 70 50 C70 55, 60 65, 60 65 C60 65, 50 55, 50 50 Z" fill="#ef4444" opacity="0.3"/>
-                        <path d="M320 60 C320 55, 325 50, 330 55 C335 50, 340 55, 340 60 C340 65, 330 75, 330 75 C330 75, 320 65, 320 60 Z" fill="#ef4444" opacity="0.2"/>
-                        <path d="M350 320 C350 315, 355 310, 360 315 C365 310, 370 315, 370 320 C370 325, 360 335, 360 335 C360 335, 350 325, 350 320 Z" fill="#ef4444" opacity="0.4"/>
-                      </svg>
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="relative z-10 text-center space-y-6">
-                      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-2xl mb-4">
-                        <Globe className="w-10 h-10 text-white" />
+                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                  {/* Phone Input Form */}
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl">
+                    <PhoneInput />
+                  </div>
+                  
+                  {/* Wellness Support Visual */}
+                  <div className="relative">
+                    <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-green-900/20 rounded-2xl p-8 h-full min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden">
+                      {/* Background pattern */}
+                      <div className="absolute inset-0 opacity-10">
+                        <svg viewBox="0 0 400 400" className="w-full h-full">
+                          {/* Support network visualization */}
+                          <circle cx="200" cy="200" r="60" fill="#6366f1" opacity="0.3"/>
+                          <circle cx="200" cy="200" r="40" fill="#8b5cf6" opacity="0.4"/>
+                          <circle cx="200" cy="200" r="20" fill="#ec4899" opacity="0.5"/>
+                          
+                          {/* Connection nodes */}
+                          <circle cx="120" cy="120" r="15" fill="#10b981" opacity="0.4"/>
+                          <circle cx="280" cy="120" r="15" fill="#f59e0b" opacity="0.4"/>
+                          <circle cx="120" cy="280" r="15" fill="#ef4444" opacity="0.4"/>
+                          <circle cx="280" cy="280" r="15" fill="#3b82f6" opacity="0.4"/>
+                          
+                          {/* Connection lines */}
+                          <line x1="200" y1="200" x2="120" y2="120" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
+                          <line x1="200" y1="200" x2="280" y2="120" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
+                          <line x1="200" y1="200" x2="120" y2="280" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
+                          <line x1="200" y1="200" x2="280" y2="280" stroke="#6366f1" strokeWidth="2" opacity="0.3"/>
+                          
+                          {/* Floating hearts */}
+                          <path d="M50 50 C50 45, 55 40, 60 45 C65 40, 70 45, 70 50 C70 55, 60 65, 60 65 C60 65, 50 55, 50 50 Z" fill="#ef4444" opacity="0.3"/>
+                          <path d="M320 60 C320 55, 325 50, 330 55 C335 50, 340 55, 340 60 C340 65, 330 75, 330 75 C330 75, 320 65, 320 60 Z" fill="#ef4444" opacity="0.2"/>
+                          <path d="M350 320 C350 315, 355 310, 360 315 C365 310, 370 315, 370 320 C370 325, 360 335, 360 335 C360 335, 350 325, 350 320 Z" fill="#ef4444" opacity="0.4"/>
+                        </svg>
                       </div>
                       
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        24/7 Professional Support
-                      </h3>
-                      
-                      <p className="text-gray-600 dark:text-gray-300 max-w-md">
-                        Connect instantly with our AI-powered mental health support system, designed by licensed professionals.
-                      </p>
-                      
-                      {/* Support features */}
-                      <div className="grid grid-cols-2 gap-4 mt-8">
-                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2">
-                            <Clock className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">Instant Access</div>
+                      {/* Content */}
+                      <div className="relative z-10 text-center space-y-6">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-2xl mb-4">
+                          <Globe className="w-10 h-10 text-white" />
                         </div>
-                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2">
-                            <Shield className="w-5 h-5 text-green-600" />
+                        
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                          24/7 Professional Support
+                        </h3>
+                        
+                        <p className="text-gray-600 dark:text-gray-300 max-w-md">
+                          Connect instantly with our AI-powered mental health support system, designed by licensed professionals.
+                        </p>
+                        
+                        {/* Support features */}
+                        <div className="grid grid-cols-2 gap-4 mt-8">
+                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                            <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-2">
+                              <Clock className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">Instant Access</div>
                           </div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">Confidential</div>
-                        </div>
-                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-2">
-                            <Heart className="w-5 h-5 text-purple-600" />
+                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                            <div className="inline-flex items-center justify-center w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg mb-2">
+                              <Shield className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">Confidential</div>
                           </div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">Compassionate</div>
-                        </div>
-                        <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg mb-2">
-                            <Star className="w-5 h-5 text-indigo-600" />
+                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                            <div className="inline-flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-2">
+                              <Heart className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">Compassionate</div>
                           </div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">Expert Care</div>
+                          <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-4 text-center">
+                            <div className="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg mb-2">
+                              <Star className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">Expert Care</div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -274,7 +278,33 @@ export function HeroSection({ className }: HeroSectionProps) {
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Message for Clerk authenticated users */}
+          {isSignedIn && (
+            <div className="mb-20">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-8 border border-blue-200 dark:border-blue-800 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4">
+                    <Heart className="w-8 h-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                    Welcome Back!
+                  </h2>
+                  <p className="text-lg text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+                    You're already signed in. Access your wellness dashboard to continue your mental health journey.
+                  </p>
+                  <Button 
+                    onClick={() => router.push('/dashboard')}
+                    className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <Brain className="w-5 h-5 mr-2" />
+                    Go to Dashboard
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stats Section */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 sm:p-12 text-white">

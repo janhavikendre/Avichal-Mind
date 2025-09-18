@@ -74,8 +74,14 @@ export async function POST(request: NextRequest) {
     let user = null;
 
     if (userId) {
-      // User is authenticated, find existing user
-      user = await User.findOne({ clerkUserId: userId });
+      // User is authenticated with Clerk - prevent phone authentication
+      return NextResponse.json(
+        { 
+          error: 'You are already signed in with an account. Please use your dashboard for mental wellness support.',
+          redirectUrl: '/dashboard'
+        },
+        { status: 409 } // Conflict status
+      );
     } else {
       // Create a temporary user for phone-only access
       // Check if phone user already exists by phone number
