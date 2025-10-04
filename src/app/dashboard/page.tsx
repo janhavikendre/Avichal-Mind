@@ -185,7 +185,7 @@ export default function DashboardPage() {
       <div className="relative min-h-[600px] overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900">
         {/* Background Image - Full Coverage */}
         <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat bg-gray-200"
           style={{
             backgroundImage: 'url(/ai-bot.jpg)',
             backgroundSize: 'cover',

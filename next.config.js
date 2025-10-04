@@ -6,6 +6,7 @@ const nextConfig = {
   },
   images: {
     domains: ['images.clerk.dev', 'img.clerk.com'],
+    unoptimized: true, // This helps with static image serving
   },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
@@ -13,6 +14,7 @@ const nextConfig = {
   experimental: {
     esmExternals: 'loose',
   },
+  trailingSlash: false,
   webpack: (config, { isServer }) => {
     // Fix for TanStack Query module resolution
     if (!isServer) {
@@ -35,6 +37,15 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ],
+      },
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
         ],
       },
     ];

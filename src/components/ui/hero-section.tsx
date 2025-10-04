@@ -38,7 +38,7 @@ export function HeroSection({ className }: HeroSectionProps) {
           <div className="relative w-full min-h-screen overflow-hidden animate-fade-in-up" style={{animationDelay: '0.2s'}}>
             {/* Background Image - Optimized for mobile */}
             <div 
-              className="absolute inset-0 w-full h-full bg-cover bg-no-repeat bg-center sm:bg-center"
+              className="absolute inset-0 w-full h-full bg-cover bg-no-repeat bg-center sm:bg-center bg-gray-200"
               style={{
                 backgroundImage: 'url(/bg.png)',
                 backgroundPosition: 'center 20%', // Show more of the girl's face on mobile
