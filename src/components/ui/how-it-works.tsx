@@ -9,21 +9,21 @@ interface HowItWorksProps {
 const steps = [
   {
     number: "1",
-    title: "Connect with AVI",
-    description: "Start by chatting with our AI assistant AVI through text or voice. Share your feelings and concerns in a safe, judgment-free environment.",
-    color: "bg-purple-100 text-purple-600"
-  },
-  {
-    number: "2", 
-    title: "Get Matched",
-    description: "Based on your needs and preferences, we connect you with licensed psychiatrists or clinical psychologists specialized in your concerns.",
+    title: "Search for Doctors",
+    description: "Find experienced mental health professionals across all specialties. Browse profiles, read reviews, and check availability.",
     color: "bg-blue-100 text-blue-600"
   },
   {
-    number: "3",
-    title: "Start Healing", 
-    description: "Begin your therapeutic journey with continuous support. All conversations are recorded for continuity and better care coordination.",
+    number: "2", 
+    title: "Book Appointment",
+    description: "Schedule your consultation at your convenience. Choose between online video calls or in-person clinic visits.",
     color: "bg-green-100 text-green-600"
+  },
+  {
+    number: "3",
+    title: "Consult & Follow-up", 
+    description: "Meet with your chosen specialist for comprehensive mental health care. Receive ongoing support and treatment recommendations.",
+    color: "bg-purple-100 text-purple-600"
   }
 ];
 
@@ -33,10 +33,10 @@ export function HowItWorks({ className }: HowItWorksProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white mb-4">
-            How Avichal Mind Works
+            Book an appointment for an in-clinic consultation
           </h2>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Simple, secure, and effective mental health support in three easy steps
+            Find experienced doctors across all specialties for comprehensive mental health care
           </p>
         </div>
         

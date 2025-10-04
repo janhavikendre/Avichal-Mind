@@ -48,11 +48,7 @@ export function PhoneInput({ className }: PhoneInputProps) {
     
     // Handle Indian numbers (10 digits starting with 6-9)
     if (cleaned.length <= 10 && cleaned.match(/^[6-9]/)) {
-      if (cleaned.length <= 5) {
-        return cleaned;
-      } else if (cleaned.length <= 10) {
-        return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
-      }
+      return cleaned; // No spacing for Indian numbers
     }
     
     // Handle US numbers (10 digits starting with 2-5)
@@ -60,9 +56,9 @@ export function PhoneInput({ className }: PhoneInputProps) {
       if (cleaned.length <= 3) {
         return cleaned;
       } else if (cleaned.length <= 6) {
-        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+        return `(${cleaned.slice(0, 3)})${cleaned.slice(3)}`;
       } else {
-        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+        return `(${cleaned.slice(0, 3)})${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
       }
     }
     

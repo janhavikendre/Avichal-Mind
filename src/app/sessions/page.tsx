@@ -474,14 +474,14 @@ export default function AllSessionsPage() {
             </div>
 
             {/* Debug Toggle */}
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <Button
                 onClick={() => setDebugMode(!debugMode)}
                 className={`text-sm ${debugMode ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-600 hover:bg-gray-700'}`}
               >
                 {debugMode ? 'Hide All Sessions' : 'Show All Sessions'}
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
 

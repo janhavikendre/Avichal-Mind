@@ -273,3 +273,51 @@
     @apply translate-x-0;
   }
 }
+
+/* Cool Background Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) scale(1.1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.15);
+  }
+}
+
+@keyframes parallaxFloat {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) translateX(5px) rotate(1deg);
+  }
+  50% {
+    transform: translateY(-20px) translateX(0px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-10px) translateX(-5px) rotate(-1deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-parallax-float {
+  animation: parallaxFloat 8s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
