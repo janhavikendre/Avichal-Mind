@@ -106,7 +106,9 @@ dist
 
 # Gatsby files
 .cache/
-public
+# NOTE: The `public/` folder is used by Next.js for static assets (images, fonts, etc).
+# Keep `public/` tracked so files like `public/ai-bot.jpg` and `public/bg.png` are deployed to Vercel.
+# If you need to ignore a generated `public/` from another tool, use a more specific pattern.
 
 # Storybook build outputs
 .out
