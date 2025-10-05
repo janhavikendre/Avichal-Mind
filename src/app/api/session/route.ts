@@ -242,12 +242,13 @@ export async function GET(request: NextRequest) {
     }
 
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20'); // Reduced limit for better performance
+    const limit = parseInt(searchParams.get('limit') || '10'); // Show 10 sessions per page for pagination
     const skip = (page - 1) * limit;
     const debug = searchParams.get('debug') === 'true';
 
     console.log(`🔍 Fetching sessions for user ${user._id}, page: ${page}, limit: ${limit}, skip: ${skip}, debug: ${debug}`);
 
+    // Show ALL sessions for the user (including empty ones)
     // If debug mode, show all sessions regardless of user
     const query = debug ? {} : { userId: user._id };
     
@@ -282,6 +283,10 @@ export async function GET(request: NextRequest) {
         limit,
         total,
         pages: Math.ceil(total / limit),
+      },
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300', // Cache for 1 minute
       },
     });
   } catch (error) {

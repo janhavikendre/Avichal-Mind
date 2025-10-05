@@ -30,24 +30,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total session count
-    const totalSessions = await Session.countDocuments({ userId: user._id });
+    // Get total session count (only sessions with conversations)
+    const totalSessions = await Session.countDocuments({ 
+      userId: user._id,
+      messageCount: { $gt: 0 }
+    });
 
-    // Get this month's sessions
+    // Get this month's sessions (only with conversations)
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonthSessions = await Session.countDocuments({
       userId: user._id,
-      startedAt: { $gte: startOfMonth }
+      startedAt: { $gte: startOfMonth },
+      messageCount: { $gt: 0 }
     });
 
-    // Get total messages across all sessions
-    const sessions = await Session.find({ userId: user._id }).select('messageCount');
+    // Get total messages across all sessions (only sessions with messages)
+    const sessions = await Session.find({ 
+      userId: user._id,
+      messageCount: { $gt: 0 }
+    }).select('messageCount');
     const totalMessages = sessions.reduce((sum, session) => sum + (session.messageCount || 0), 0);
 
-    // Get text and voice session counts
-    const textSessions = await Session.countDocuments({ userId: user._id, mode: 'text' });
-    const voiceSessions = await Session.countDocuments({ userId: user._id, mode: 'voice' });
+    // Get text and voice session counts (only with conversations)
+    const textSessions = await Session.countDocuments({ 
+      userId: user._id, 
+      mode: 'text',
+      messageCount: { $gt: 0 }
+    });
+    const voiceSessions = await Session.countDocuments({ 
+      userId: user._id, 
+      mode: 'voice',
+      messageCount: { $gt: 0 }
+    });
 
     // Get completed sessions count
     const completedSessions = await Session.countDocuments({ 
@@ -72,13 +87,15 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      totalSessions,
-      thisMonthSessions,
-      totalMessages,
-      textSessions,
-      voiceSessions,
-      completedSessions,
-      crisisSessions
+      stats: {
+        totalSessions,
+        thisMonthSessions,
+        totalMessages,
+        textSessions,
+        voiceSessions,
+        completedSessions,
+        crisisSessions
+      }
     });
   } catch (error) {
     console.error('Error fetching session counts:', error);

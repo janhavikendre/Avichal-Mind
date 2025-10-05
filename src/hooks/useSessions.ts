@@ -24,8 +24,20 @@ export function useSessions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalSessions: 0,
+    limit: 10
+  });
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    sessionsByMode: { text: 0, voice: 0 },
+    sessionsByLanguage: { en: 0, hi: 0, mr: 0 },
+    messageStats: { totalMessages: 0, avgMessagesPerSession: 0 }
+  });
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (page: number = 1) => {
     // Fixed: Better logic for determining when to fetch data
     const isUserReady = (isLoaded && user) || (isPhoneUser && phoneUser);
     const isStillLoading = (!isLoaded && !phoneUserLoading) || (isLoaded && !user && !isPhoneUser);
@@ -46,49 +58,64 @@ export function useSessions() {
       
       // Build URLs with phoneUserId if it's a phone user
       const sessionUrl = isPhoneUser && phoneUser 
-        ? `/api/session?phoneUserId=${phoneUser._id}`
-        : '/api/session';
+        ? `/api/session?phoneUserId=${phoneUser._id}&page=${page}&limit=${pagination.limit}`
+        : `/api/session?page=${page}&limit=${pagination.limit}`;
       
-      const countUrl = isPhoneUser && phoneUser 
-        ? `/api/session/count?phoneUserId=${phoneUser._id}`
-        : '/api/session/count';
+      const statsUrl = isPhoneUser && phoneUser 
+        ? `/api/session/stats?phoneUserId=${phoneUser._id}`
+        : '/api/session/stats';
       
       console.log('🔍 Fetching sessions from:', sessionUrl);
-      console.log('🔍 Fetching counts from:', countUrl);
+      console.log('🔍 Fetching stats from:', statsUrl);
       console.log('🔍 User ready for fetch:', { isPhoneUser, phoneUser: !!phoneUser, clerkUser: !!user });
       
-      // Fetch both sessions and counts in parallel with timeout
+      // Fetch both sessions and stats in parallel with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
-      const [sessionsResponse, countsResponse] = await Promise.all([
+      const [sessionsResponse, statsResponse] = await Promise.all([
         fetch(sessionUrl, { signal: controller.signal }),
-        fetch(countUrl, { signal: controller.signal })
+        fetch(statsUrl, { signal: controller.signal })
       ]);
       
       clearTimeout(timeoutId);
 
       console.log('📊 Sessions response status:', sessionsResponse.status);
-      console.log('📊 Counts response status:', countsResponse.status);
+      console.log('📊 Stats response status:', statsResponse.status);
 
-      if (sessionsResponse.ok && countsResponse.ok) {
-        const [sessionsData, countsData] = await Promise.all([
+      if (sessionsResponse.ok && statsResponse.ok) {
+        const [sessionsData, statsData] = await Promise.all([
           sessionsResponse.json(),
-          countsResponse.json()
+          statsResponse.json()
         ]);
         
         console.log('📊 Sessions fetched:', sessionsData.sessions?.length || 0, 'sessions');
-        console.log('📊 Total sessions from API:', sessionsData.pagination?.total || 'unknown');
-        console.log('📊 Session counts:', countsData);
-        console.log('📊 Raw sessions data:', sessionsData);
+        console.log('📊 Pagination info:', sessionsData.pagination);
+        console.log('📊 Session stats:', statsData.stats);
         
         setSessions(sessionsData.sessions || []);
+        
+        // Update pagination info
+        if (sessionsData.pagination) {
+          setPagination({
+            currentPage: sessionsData.pagination.page || 1,
+            totalPages: sessionsData.pagination.pages || 0,
+            totalSessions: sessionsData.pagination.total || 0,
+            limit: pagination.limit
+          });
+        }
+        
+        // Update stats
+        if (statsData.stats) {
+          setStats(statsData.stats);
+        }
+        
         setRetryCount(0); // Reset retry count on successful fetch
       } else {
         const sessionsError = await sessionsResponse.text();
-        const countsError = await countsResponse.text();
-        console.error('❌ Failed to fetch sessions:', { sessionsError, countsError });
-        setError(`Failed to fetch sessions: ${sessionsResponse.status} - ${sessionsError}`);
+        const statsError = await statsResponse.text();
+        console.error('❌ Failed to fetch data:', { sessionsError, statsError });
+        setError(`Failed to fetch data: ${sessionsResponse.status} - ${sessionsError}`);
         
         // Retry logic for failed requests
         if (retryCount < 3) {
@@ -120,10 +147,6 @@ export function useSessions() {
       setLoading(false);
     }
   }, [isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser, retryCount]);
-
-  const refreshSessions = useCallback(() => {
-    fetchSessions();
-  }, [fetchSessions]);
 
   useEffect(() => {
     fetchSessions();
@@ -178,8 +201,8 @@ export function useSessions() {
     return () => clearInterval(interval);
   }, [fetchSessions, isLoaded, user, phoneUserLoading, isPhoneUser, phoneUser]);
 
-  // Calculate stats
-  const stats = {
+  // Calculate session statistics
+  const sessionStats = {
     totalSessions: sessions.length,
     thisMonthSessions: sessions.filter(s => {
       const sessionDate = new Date(s.startedAt);
@@ -194,12 +217,37 @@ export function useSessions() {
     crisisSessions: sessions.filter(s => s.safetyFlags.crisis).length
   };
 
+  // Add pagination functions
+  const loadPage = useCallback((page: number) => {
+    fetchSessions(page);
+  }, [fetchSessions]);
+
+  const nextPage = useCallback(() => {
+    if (pagination.currentPage < pagination.totalPages) {
+      loadPage(pagination.currentPage + 1);
+    }
+  }, [pagination.currentPage, pagination.totalPages, loadPage]);
+
+  const prevPage = useCallback(() => {
+    if (pagination.currentPage > 1) {
+      loadPage(pagination.currentPage - 1);
+    }
+  }, [pagination.currentPage, loadPage]);
+
+  const refreshSessions = useCallback(() => {
+    setRetryCount(0);
+    fetchSessions(pagination.currentPage);
+  }, [fetchSessions, pagination.currentPage]);
+
   return {
     sessions,
     loading,
     error,
-    stats,
+    stats, // Use server stats instead of calculated ones
+    pagination,
     refreshSessions,
-    fetchSessions
+    loadPage,
+    nextPage,
+    prevPage
   };
 }

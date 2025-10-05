@@ -32,39 +32,61 @@ export function HeroSection({ className }: HeroSectionProps) {
       <div className="relative z-10">
 
       {/* Hero Section - Full Screen */}
-      <section className="relative z-10 min-h-screen flex items-center">
-        <div className="w-full">
+      <section className="relative z-10 h-screen flex items-center">
+        <div className="w-full h-full">
           {/* Hero Image with Text Overlay - Full Screen */}
-          <div className="relative w-full min-h-screen overflow-hidden animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-            {/* Background Image - Optimized for mobile */}
+          <div className="relative w-full h-full overflow-hidden animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+            {/* Background Image - Better mobile positioning */}
             <div 
-              className="absolute inset-0 w-full h-full bg-cover bg-no-repeat bg-center sm:bg-center bg-gray-200"
+              className="absolute inset-0 w-full h-full bg-cover bg-no-repeat bg-gray-200"
               style={{
                 backgroundImage: 'url(/bg.png)',
-                backgroundPosition: 'center 20%', // Show more of the girl's face on mobile
+                backgroundPosition: 'center 20%', // Center the girl's face on mobile
+                backgroundSize: 'cover',
               }}
-            >              
-              {/* Overlay for better text readability */}
-              <div className="absolute inset-0 bg-black/50 sm:bg-black/30"></div>
+            >
+              {/* Mobile-specific background positioning */}
+              <style jsx>{`
+                @media (max-width: 640px) {
+                  div {
+                    background-position: center 25% !important;
+                    background-size: 110% auto !important;
+                  }
+                }
+                @media (min-width: 641px) and (max-width: 1024px) {
+                  div {
+                    background-position: center 30% !important;
+                    background-size: cover !important;
+                  }
+                }
+                @media (min-width: 1025px) {
+                  div {
+                    background-position: center center !important;
+                    background-size: cover !important;
+                  }
+                }
+              `}</style>              
+              {/* Stronger overlay for better text readability on mobile */}
+              <div className="absolute inset-0 bg-black/70 sm:bg-black/50"></div>
               
-              {/* Text Content Overlay - Centered on mobile, left-aligned on desktop */}
+              {/* Text Content Overlay - Better mobile centering */}
               <div className="absolute inset-0 flex items-center justify-center sm:justify-start px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20">
-                <div className="max-w-lg sm:max-w-2xl text-center sm:text-left ml-0 sm:ml-4 lg:ml-16 text-white w-full sm:w-auto">
+                <div className="max-w-xs sm:max-w-2xl text-center sm:text-left ml-0 sm:ml-4 lg:ml-16 text-white w-full sm:w-auto">
                   {/* Trust Badge */}
-                  <div className="inline-flex items-center px-3 sm:px-4 lg:px-6 py-2 sm:py-2 lg:py-3 bg-white/20 backdrop-blur-md rounded-full text-white text-xs sm:text-sm font-semibold mb-3 sm:mb-4 lg:mb-6 animate-fade-in-up border border-white/30" style={{animationDelay: '0.4s'}}>
-                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    <span className="text-xs sm:text-sm">Trusted by 10,000+ users worldwide</span>
+                  <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-white/30 backdrop-blur-md rounded-full text-white text-xs font-semibold mb-4 sm:mb-6 animate-fade-in-up border border-white/50 shadow-lg" style={{animationDelay: '0.4s'}}>
+                    <Shield className="w-3 h-3 mr-1 sm:mr-2" />
+                    <span className="text-xs">Trusted by 10,000+ users worldwide</span>
                   </div>
 
                   {/* Main Headline - Better mobile sizing */}
-                  <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-3 sm:mb-4 lg:mb-6 leading-tight animate-fade-in-up drop-shadow-lg" style={{animationDelay: '0.6s'}}>
+                  <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-3 sm:mb-6 leading-tight animate-fade-in-up drop-shadow-2xl" style={{animationDelay: '0.6s'}}>
                     <span className="block">Your Personal</span>
                     <span className="block">Wellness</span>
                     <span className="block text-blue-300">AI Assistant</span>
                   </h1>
 
                   {/* Subtitle */}
-                  <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-white/90 mb-4 sm:mb-6 lg:mb-8 leading-relaxed animate-fade-in-up font-medium drop-shadow-md max-w-xs sm:max-w-lg lg:max-w-2xl mx-auto sm:mx-0" style={{animationDelay: '0.8s'}}>
+                  <p className="text-sm sm:text-lg lg:text-xl text-white/95 mb-6 sm:mb-8 leading-relaxed animate-fade-in-up font-medium drop-shadow-xl max-w-xs sm:max-w-lg lg:max-w-2xl mx-auto sm:mx-0" style={{animationDelay: '0.8s'}}>
                     Start your journey to better mental and emotional health
                   </p>
 
@@ -74,10 +96,10 @@ export function HeroSection({ className }: HeroSectionProps) {
                       onClick={handleGetStarted}
                       disabled={!isLoaded}
                       size="lg"
-                      className="bg-white text-gray-800 hover:bg-gray-100 px-4 sm:px-6 lg:px-10 py-2.5 sm:py-3 lg:py-4 text-sm sm:text-base lg:text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 w-auto"
+                      className="bg-white text-gray-800 hover:bg-gray-100 px-5 sm:px-8 lg:px-10 py-2.5 sm:py-4 text-sm sm:text-lg font-semibold rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 w-auto border-2 border-white/20"
                     >
                       {!isLoaded ? "Loading..." : isSignedIn ? "Go to Dashboard" : "Start Your Journey"}
-                      <ArrowRight className="w-5 h-5 ml-2" />
+                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                     </Button>
                   </div>
                 </div>
@@ -87,10 +109,10 @@ export function HeroSection({ className }: HeroSectionProps) {
         </div>
       </section>
 
-      {/* Key Features Preview */}
-      <section className="py-20 bg-white dark:bg-gray-800">
+      {/* Key Features Preview - More compact on mobile */}
+      <section className="py-12 sm:py-20 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <MessageCircle className="w-6 h-6 text-blue-600" />
@@ -120,14 +142,14 @@ export function HeroSection({ className }: HeroSectionProps) {
 
       
 
-      {/* Phone Support Section - Only for non-authenticated users */}
+      {/* Phone Support Section - Only for non-authenticated users - More compact */}
       {!isSignedIn && (
-        <section id="phone-support" className="py-20 bg-gray-50 dark:bg-gray-900">
+        <section id="phone-support" className="py-12 sm:py-20 bg-gray-50 dark:bg-gray-900">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
               Try Voice Support Now
             </h2>
-            <p className="text-xl text-gray-700 dark:text-gray-200 font-medium mb-8 max-w-2xl mx-auto drop-shadow-md">
+            <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-200 font-medium mb-6 sm:mb-8 max-w-2xl mx-auto drop-shadow-md">
               Enter your phone number and get connected with our AI assistant for immediate mental health support
             </p>
             

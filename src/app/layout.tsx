@@ -6,7 +6,11 @@ import { Toaster } from 'react-hot-toast';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap', // Improve loading performance
+  fallback: ['system-ui', 'arial'], // Fallback fonts if Google Fonts fails
+});
 
 export const metadata: Metadata = {
   title: 'Avichal Mind - AI Mental Wellness for India',

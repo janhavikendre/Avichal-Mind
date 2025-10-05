@@ -33,6 +33,17 @@ export default function DashboardPage() {
   const { phoneUser, isLoading: phoneUserLoading, isPhoneUser, clearPhoneUser } = usePhoneUser();
   const { sessions, loading, stats, refreshSessions } = useSessions();
 
+  // Calculate additional stats from sessions data
+  const computedStats = {
+    thisMonthSessions: sessions.filter(s => {
+      const sessionDate = new Date(s.startedAt);
+      const now = new Date();
+      return sessionDate.getMonth() === now.getMonth() && 
+             sessionDate.getFullYear() === now.getFullYear();
+    }).length,
+    totalMessages: stats.messageStats?.totalMessages || sessions.reduce((total, session) => total + session.messageCount, 0),
+  };
+
   // Prevent authentication conflicts - if both are authenticated, prefer Clerk
   useEffect(() => {
     if (isLoaded && user && isPhoneUser && phoneUser) {
@@ -181,61 +192,94 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <FloatingNavbar />
       
-      {/* Professional Header Section with AI Bot Background */}
-      <div className="relative min-h-[600px] overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900">
-        {/* Background Image - Full Coverage */}
+      {/* Modern Hero Section with Responsive Background - Mobile Height Reduced */}
+      <div className="relative min-h-[400px] sm:min-h-[600px] lg:min-h-[700px] overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800">
+        {/* Background Image - Mobile Optimized with Smaller Size */}
         <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat bg-gray-200"
+          className="absolute inset-0 w-full h-full bg-gray-300 dark:bg-gray-700"
           style={{
-            backgroundImage: 'url(/ai-bot.jpg)',
+            backgroundImage: 'url(/bg.png)',
             backgroundSize: 'cover',
-            backgroundPosition: 'center center'
+            backgroundPosition: 'center top',
+            backgroundRepeat: 'no-repeat'
           }}
-        ></div>
+        >
+          {/* Mobile-specific cropping and positioning - Smaller and Reduced Height */}
+          <div className="sm:hidden absolute inset-0" 
+               style={{
+                 backgroundImage: 'url(/bg.png)',
+                 backgroundSize: '100%',
+                 backgroundPosition: 'center 15%',
+                 backgroundRepeat: 'no-repeat',
+                 height: '85%'
+               }}>
+          </div>
+          
+          {/* Tablet-specific positioning */}
+          <div className="hidden sm:block md:hidden absolute inset-0"
+               style={{
+                 backgroundImage: 'url(/ai-bot.jpg)',
+                 backgroundSize: 'cover',
+                 backgroundPosition: 'center 25%',
+                 backgroundRepeat: 'no-repeat'
+               }}>
+          </div>
+          
+          {/* Mobile gradient overlay for better text contrast */}
+          <div className="sm:hidden absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/40 to-blue-900/80"></div>
+        </div>
         
-        {/* Enhanced overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-indigo-800/50 to-purple-900/60"></div>
+        {/* Enhanced gradient overlay with better mobile readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-indigo-800/60 to-purple-900/70 sm:from-blue-900/60 sm:via-indigo-800/50 sm:to-purple-900/60"></div>
         
-        {/* Wavy Line Border at Bottom - Overlay Style */}
+        {/* Decorative bottom wave - responsive height */}
         <div className="absolute bottom-0 left-0 w-full">
           <svg 
-            className="w-full h-8" 
+            className="w-full h-6 sm:h-8 lg:h-10" 
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 1200 40" 
             preserveAspectRatio="none"
           >
             <path 
-              d="M0,20 C300,5 400,35 600,20 C800,5 900,35 1200,20 L1200,40 L0,40 Z" 
-              fill="rgba(255,255,255,0.3)" 
-              stroke="rgba(255,255,255,0.8)"
-              strokeWidth="2"
+              d="M0,25 C300,10 400,35 600,20 C800,5 900,30 1200,15 L1200,40 L0,40 Z" 
+              fill="rgba(255,255,255,0.1)" 
+            ></path>
+            <path 
+              d="M0,35 C300,20 400,40 600,30 C800,15 900,35 1200,25 L1200,40 L0,40 Z" 
+              fill="rgba(255,255,255,0.05)" 
             ></path>
           </svg>
         </div>
         
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 max-w-7xl relative z-10">
+        {/* Content Container - Mobile First Design */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-28 lg:pt-32 pb-16 sm:pb-20 lg:pb-24 max-w-7xl relative z-10">
           <div className="text-center">
-            <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/40 backdrop-blur-md rounded-full border border-white/50 mb-8 shadow-lg">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-white font-semibold drop-shadow-lg">
+            {/* Welcome Badge - Mobile Responsive */}
+            <div className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-white/30 sm:bg-white/40 backdrop-blur-md rounded-full border border-white/40 sm:border-white/50 mb-6 sm:mb-8 shadow-lg">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="text-white font-semibold text-sm sm:text-base drop-shadow-lg truncate">
                 Welcome back, {isPhoneUser && phoneUser ? phoneUser.firstName : user?.firstName || 'User'}!
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-xl">
+            
+            {/* Main Heading - Responsive Typography */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight drop-shadow-xl px-2">
               Your Wellness Dashboard
             </h1>
-            <p className="text-xl text-white/90 max-w-3xl mx-auto mb-12 leading-relaxed drop-shadow-lg font-medium">
+            
+            {/* Subtitle - Mobile Optimized */}
+            <p className="text-base sm:text-lg lg:text-xl text-white/90 max-w-2xl lg:max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 leading-relaxed drop-shadow-lg font-medium px-4">
               Continue your mental wellness journey with personalized support and professional insights
             </p>
             
-            {/* Professional Action Buttons */}
-            <div className="flex justify-center">
+            {/* CTA Button - Mobile First */}
+            <div className="flex justify-center px-4">
               <Link href="/session/new">
-                <Button className="bg-white/95 text-blue-600 hover:bg-white hover:text-blue-700 px-10 py-4 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 border-0 backdrop-blur-sm transform hover:scale-105">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <Button className="bg-white/95 hover:bg-white text-blue-600 hover:text-blue-700 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 border-0 backdrop-blur-sm transform hover:scale-105 w-full sm:w-auto max-w-sm">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Start New Session
+                  <span className="truncate">Start New Session</span>
                 </Button>
               </Link>
             </div>
@@ -280,7 +324,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-emerald-600 dark:text-emerald-400 text-sm font-semibold">
-                    +{Math.max(0, stats.thisMonthSessions - 3)}
+                    +{Math.max(0, computedStats.thisMonthSessions - 3)}
                   </div>
                 </div>
               </div>
@@ -289,7 +333,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-1">{stats.thisMonthSessions}</div>
+              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-1">{computedStats.thisMonthSessions}</div>
               <p className="text-sm text-gray-500 dark:text-gray-400">monthly progress</p>
             </CardContent>
           </Card>
@@ -313,7 +357,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-1">{stats.totalMessages}</div>
+              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-1">{computedStats.totalMessages}</div>
               <p className="text-sm text-gray-500 dark:text-gray-400">conversations shared</p>
             </CardContent>
           </Card>

@@ -232,8 +232,8 @@ export default function SummariesPage() {
                 className="w-full sm:w-auto"
                 size="sm"
               >
-                <Brain className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Generate Missing</span>
+                {/* <Brain className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Generate Missing</span> */}
                 <span className="sm:hidden">Generate</span>
               </Button>
               <Button 

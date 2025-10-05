@@ -13,16 +13,17 @@ interface Connection {
 const connection: Connection = {};
 
 async function connectDB(retryCount = 0, maxRetries = 3) {
-  console.log('🔍 Database connection state:', connection.isConnected);
+  // Check if already connected using mongoose connection state
+  if (mongoose.connection.readyState === 1) {
+    console.log('✅ Already connected to database');
+    return;
+  }
+  
+  console.log('🔍 Database connection state:', mongoose.connection.readyState);
   console.log('🔍 MONGODB_URI:', MONGODB_URI ? 'Set' : 'Not set');
   console.log('🔍 MONGODB_URI preview:', MONGODB_URI ? MONGODB_URI.substring(0, 20) + '...' : 'Not set');
   console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
   console.log('🔍 Retry attempt:', retryCount + 1, 'of', maxRetries + 1);
-  
-  if (connection.isConnected) {
-    console.log('✅ Already connected to database');
-    return;
-  }
 
   try {
     console.log('🔍 Connecting to MongoDB...');
@@ -38,11 +39,11 @@ async function connectDB(retryCount = 0, maxRetries = 3) {
       maxIdleTimeMS: 30000,
     };
     
-    // Set mongoose-specific options
-    mongoose.set('bufferCommands', false);
+    // Set mongoose-specific options for better performance
+    mongoose.set('bufferCommands', true); // Enable buffering to prevent timing issues
+    mongoose.set('strictQuery', false);
     
     const db = await mongoose.connect(MONGODB_URI, options);
-    connection.isConnected = db.connections[0].readyState;
     
     console.log('✅ MongoDB connected successfully');
     console.log('🔍 Database name:', db.connection.name);
@@ -65,7 +66,7 @@ async function connectDB(retryCount = 0, maxRetries = 3) {
     console.error('❌ Error code:', (error as any).code);
     
     // Reset connection state
-    connection.isConnected = 0;
+    console.error('❌ Connection failed, resetting state');
     
     // Retry logic for network errors
     if (retryCount < maxRetries && (
