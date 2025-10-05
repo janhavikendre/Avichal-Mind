@@ -415,7 +415,7 @@ export default function AllSessionsPage() {
            </Card>
          </div>
 
-        {/* Filters add*/}
+        {/* Filters add this is happned due to la la lala la la */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
