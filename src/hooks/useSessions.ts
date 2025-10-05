@@ -57,11 +57,16 @@ export function useSessions() {
       console.log('🔍 Fetching counts from:', countUrl);
       console.log('🔍 User ready for fetch:', { isPhoneUser, phoneUser: !!phoneUser, clerkUser: !!user });
       
-      // Fetch both sessions and counts in parallel
+      // Fetch both sessions and counts in parallel with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const [sessionsResponse, countsResponse] = await Promise.all([
-        fetch(sessionUrl),
-        fetch(countUrl)
+        fetch(sessionUrl, { signal: controller.signal }),
+        fetch(countUrl, { signal: controller.signal })
       ]);
+      
+      clearTimeout(timeoutId);
 
       console.log('📊 Sessions response status:', sessionsResponse.status);
       console.log('📊 Counts response status:', countsResponse.status);
@@ -95,8 +100,13 @@ export function useSessions() {
         }
       }
     } catch (err) {
-      setError('Error fetching sessions');
-      console.error('❌ Error fetching sessions:', err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timeout - please try again');
+        console.error('❌ Session fetch timeout');
+      } else {
+        setError('Error fetching sessions');
+        console.error('❌ Error fetching sessions:', err);
+      }
       
       // Retry logic for network errors
       if (retryCount < 3) {

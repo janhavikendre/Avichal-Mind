@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
     }
 
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased limit to show all sessions
+    const limit = parseInt(searchParams.get('limit') || '20'); // Reduced limit for better performance
     const skip = (page - 1) * limit;
     const debug = searchParams.get('debug') === 'true';
 
@@ -255,7 +255,14 @@ export async function GET(request: NextRequest) {
       .sort({ startedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('userId', 'name email');
+      .populate('userId', 'name email')
+      .select('-messages -__v'); // Exclude messages and version field for performance
+
+    // Trim large summary texts to avoid huge responses
+    const trimmedSessions = sessions.map(session => ({
+      ...session.toObject(),
+      summary: session.summary ? (session.summary.length > 500 ? session.summary.substring(0, 500) + '...' : session.summary) : undefined
+    }));
 
     const total = await Session.countDocuments(query);
 
@@ -269,7 +276,7 @@ export async function GET(request: NextRequest) {
     })));
 
     return NextResponse.json({
-      sessions,
+      sessions: trimmedSessions,
       pagination: {
         page,
         limit,
