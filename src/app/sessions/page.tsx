@@ -378,7 +378,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Text Sessions</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {stats.textSessions}
+                     {stats.sessionsByMode.text}
                    </p>
                  </div>
                  <MessageSquare className="h-8 w-8 text-green-600" />
@@ -392,7 +392,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Voice Sessions</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {stats.voiceSessions}
+                     {stats.sessionsByMode.voice}
                    </p>
                  </div>
                  <Clock className="h-8 w-8 text-purple-600" />
@@ -406,7 +406,7 @@ export default function AllSessionsPage() {
                  <div>
                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Messages</p>
                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                     {stats.totalMessages}
+                     {stats.messageStats.totalMessages}
                    </p>
                  </div>
                  <MessageSquare className="h-8 w-8 text-orange-600" />
